@@ -226,7 +226,7 @@ export async function getRecommendations(
     .where(inArray(feeds.normalizedUrl, userNormArray));
 
   const userFeedIds = userFeeds.map((f: Feed) => f.id);
-  const userCategories = new Set(userFeeds.map((f: Feed) => f.category));
+  const userCategories = new Set<string>(userFeeds.map((f: Feed) => f.category));
 
   if (userFeedIds.length === 0) {
     // None of user's feeds are known yet in discovery database; fallback to top feeds
@@ -313,8 +313,8 @@ export async function getRecommendations(
 
   // 2. Serendipity Shelf (10-15% exploration):
   // Pull high-scoring blogs outside user's primary categories to break filter bubbles
-  const excludedUrls = new Set([...userNormArray, ...recList.map((r) => r.normalizedUrl)]);
-  const excludedCategories = Array.from(userCategories);
+  const excludedUrls = new Set<string>([...userNormArray, ...recList.map((r) => r.normalizedUrl)]);
+  const excludedCategories: string[] = Array.from(userCategories);
 
   let serendipityFeeds: any[] = [];
   if (excludedCategories.length > 0) {
