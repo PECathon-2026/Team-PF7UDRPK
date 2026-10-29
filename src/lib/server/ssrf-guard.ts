@@ -93,6 +93,20 @@ export type ValidationResult = ValidationSuccess | ValidationFailure;
  *  • Explicitly blocked cloud-metadata hostnames
  */
 export function validateUrl(rawUrl: string): ValidationResult {
+  if (/\[.*(%|%25).*\]/.test(rawUrl)) {
+    return {
+      ok: false,
+      error: 'IPV6_ZONE_ID',
+      message: 'IPv6 zone identifiers are not permitted in URLs.',
+    };
+  }
+  if (/^https?:\/\/\//i.test(rawUrl.trim())) {
+    return {
+      ok: false,
+      error: 'EMPTY_HOSTNAME',
+      message: 'URL has no hostname.',
+    };
+  }
   // ── 1. Parse ────────────────────────────────────────────────────
   let parsed: URL;
   try {
@@ -267,7 +281,7 @@ export async function resolveAndValidate(hostname: string): Promise<ValidationRe
   }
 
   // DNS resolution
-  let addresses: dns.LookupAddress[];
+  let addresses: Array<{ address: string; family: number }>;
   try {
     addresses = await dns.lookup(cleanHost, { all: true });
   } catch (err) {
