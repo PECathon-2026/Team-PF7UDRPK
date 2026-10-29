@@ -40,3 +40,4 @@ main().catch((err) => {
   console.error('Fatal error running Trap Detector:', err);
   process.exit(1);
 });
+

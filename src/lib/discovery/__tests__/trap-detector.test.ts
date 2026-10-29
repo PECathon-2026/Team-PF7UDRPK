@@ -74,3 +74,4 @@ describe('Seed Trap Detector', () => {
     expect(trap?.bountyReportMessage).toContain('Identical Blog Title');
   });
 });
+

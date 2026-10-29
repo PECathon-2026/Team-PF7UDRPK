@@ -80,3 +80,4 @@ export type Feed = typeof feeds.$inferSelect;
 export type NewFeed = typeof feeds.$inferInsert;
 export type AnonymousBatch = typeof anonymousBatches.$inferSelect;
 export type BatchFeed = typeof batchFeeds.$inferSelect;
+

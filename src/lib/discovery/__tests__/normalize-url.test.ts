@@ -43,3 +43,4 @@ describe('normalizeFeedEndpoint', () => {
     ).toBe('https://danluu.com/atom.xml');
   });
 });
+
