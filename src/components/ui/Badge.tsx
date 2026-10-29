@@ -15,11 +15,11 @@ export function Badge({
 }: BadgeProps) {
   const variantStyles = {
     default: 'bg-reader-selected text-reader-muted border-reader-border',
-    accent: 'bg-reader-accentBg text-reader-accent border-reader-accent/20',
-    unread: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 font-medium',
-    success: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    danger: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    accent: 'bg-reader-accentBg text-reader-accent border-reader-accent/30 font-medium',
+    unread: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30 font-medium',
+    success: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+    warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+    danger: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
   }[variant];
 
   const sizeStyles = {
@@ -35,4 +35,3 @@ export function Badge({
     </span>
   );
 }
-

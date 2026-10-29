@@ -11,13 +11,20 @@ describe('uiStore', () => {
       searchQuery: '',
       fontFamily: 'sans',
       fontSize: 'base',
+      lineHeight: 'comfortable',
+      readingWidth: 'medium',
+      theme: 'dark',
+      timelineWidth: 360,
+      isReaderExpanded: false,
       isAddFeedOpen: false,
       isShortcutsOpen: false,
+      isSettingsOpen: false,
       isMobileDrawerOpen: false,
       isMobileReaderOpen: false,
       anonymousSharingEnabled: false,
       isOffline: false,
       isSyncingAll: false,
+      toastMessage: null,
     });
   });
 
@@ -49,31 +56,78 @@ describe('uiStore', () => {
     expect(uiStore.getSnapshot().isMobileReaderOpen).toBe(false);
   });
 
-  it('adjusts font family and font size', () => {
+  it('adjusts font family, font size, line height, and reading width', () => {
     uiStore.setFontFamily('serif');
     expect(uiStore.getSnapshot().fontFamily).toBe('serif');
 
-    // Default is 'base'
+    // Font size steppers
     uiStore.increaseFontSize();
     expect(uiStore.getSnapshot().fontSize).toBe('lg');
 
     uiStore.increaseFontSize();
     expect(uiStore.getSnapshot().fontSize).toBe('xl');
 
-    // Cannot increase beyond xl
     uiStore.increaseFontSize();
-    expect(uiStore.getSnapshot().fontSize).toBe('xl');
+    expect(uiStore.getSnapshot().fontSize).toBe('xl'); // max
 
     uiStore.decreaseFontSize();
     expect(uiStore.getSnapshot().fontSize).toBe('lg');
+
+    // Line height
+    uiStore.setLineHeight('relaxed');
+    expect(uiStore.getSnapshot().lineHeight).toBe('relaxed');
+
+    // Reading width
+    uiStore.setReadingWidth('wide');
+    expect(uiStore.getSnapshot().readingWidth).toBe('wide');
   });
 
-  it('controls modal dialog states', () => {
+  it('manages theme modes (dark, light, system)', () => {
+    uiStore.setTheme('light');
+    expect(uiStore.getSnapshot().theme).toBe('light');
+
+    uiStore.setTheme('dark');
+    expect(uiStore.getSnapshot().theme).toBe('dark');
+
+    uiStore.setTheme('system');
+    expect(uiStore.getSnapshot().theme).toBe('system');
+  });
+
+  it('handles timeline width constraints for resizable pane', () => {
+    uiStore.setTimelineWidth(450);
+    expect(uiStore.getSnapshot().timelineWidth).toBe(450);
+
+    // Clamps below minimum (260px)
+    uiStore.setTimelineWidth(150);
+    expect(uiStore.getSnapshot().timelineWidth).toBe(260);
+
+    // Clamps above maximum (600px)
+    uiStore.setTimelineWidth(900);
+    expect(uiStore.getSnapshot().timelineWidth).toBe(600);
+  });
+
+  it('toggles reader focus expansion mode', () => {
+    expect(uiStore.getSnapshot().isReaderExpanded).toBe(false);
+
+    uiStore.toggleReaderExpanded();
+    expect(uiStore.getSnapshot().isReaderExpanded).toBe(true);
+
+    uiStore.toggleReaderExpanded();
+    expect(uiStore.getSnapshot().isReaderExpanded).toBe(false);
+  });
+
+  it('controls modal dialog states and toasts', () => {
     uiStore.setAddFeedOpen(true);
     expect(uiStore.getSnapshot().isAddFeedOpen).toBe(true);
 
     uiStore.setShortcutsOpen(true);
     expect(uiStore.getSnapshot().isShortcutsOpen).toBe(true);
+
+    uiStore.setSettingsOpen(true);
+    expect(uiStore.getSnapshot().isSettingsOpen).toBe(true);
+
+    uiStore.showToast('Article starred ⭐');
+    expect(uiStore.getSnapshot().toastMessage).toBe('Article starred ⭐');
   });
 
   it('manages anonymous sharing preference', () => {
@@ -82,4 +136,3 @@ describe('uiStore', () => {
     expect(uiStore.getSnapshot().anonymousSharingEnabled).toBe(true);
   });
 });
-

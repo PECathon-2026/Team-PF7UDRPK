@@ -12,40 +12,55 @@ import { useUIStore, uiStore } from '@/lib/client/ui-store';
 import { Sidebar } from '@/components/reader/Sidebar';
 import { Timeline } from '@/components/reader/Timeline';
 import { ReaderView } from '@/components/reader/ReaderView';
+import { ResizeHandle } from '@/components/reader/ResizeHandle';
 import { ExplorePage } from '@/components/explore/ExplorePage';
 import { DiscoverPage } from '@/components/discover/DiscoverPage';
 import { AddFeedModal } from '@/components/modals/AddFeedModal';
 import { ShortcutsModal } from '@/components/modals/ShortcutsModal';
+import { SettingsModal } from '@/components/modals/SettingsModal';
 import { SEED_BLOGS } from '@/lib/discovery/seed-data';
-import { Inbox, Compass, Sparkles, Plus } from 'lucide-react';
+import { Inbox, Compass, Sparkles, Plus, Settings } from 'lucide-react';
 
 export default function HomePage() {
   const view = useUIStore((s) => s.view);
   const activePostId = useUIStore((s) => s.activePostId);
   const isMobileDrawerOpen = useUIStore((s) => s.isMobileDrawerOpen);
-  const isMobileReaderOpen = useUIStore((s) => s.isMobileReaderOpen);
   const selectedFilter = useUIStore((s) => s.selectedFilter);
+  const timelineWidth = useUIStore((s) => s.timelineWidth);
+  const isReaderExpanded = useUIStore((s) => s.isReaderExpanded);
+  const toastMessage = useUIStore((s) => s.toastMessage);
 
-  // Query posts to enable keyboard navigation (j/k/Enter/etc)
+  // FIXED: Query posts for keyboard navigation with boolean filtering
   const posts = useLiveQuery(() => {
     if (selectedFilter === 'all') {
       return localDB.posts.orderBy('publishedAt').reverse().toArray();
     }
     if (selectedFilter === 'unread') {
-      return localDB.posts.where('isRead').equals(0).reverse().sortBy('publishedAt');
+      return localDB.posts
+        .orderBy('publishedAt')
+        .reverse()
+        .filter((p) => !p.isRead)
+        .toArray();
     }
     if (selectedFilter === 'starred') {
-      return localDB.posts.where('isStarred').equals(1).reverse().sortBy('publishedAt');
+      return localDB.posts
+        .orderBy('publishedAt')
+        .reverse()
+        .filter((p) => Boolean(p.isStarred))
+        .toArray();
     }
-    return localDB.posts.where('feedId').equals(selectedFilter).reverse().sortBy('publishedAt');
+    return localDB.posts
+      .where('feedId')
+      .equals(selectedFilter)
+      .reverse()
+      .sortBy('publishedAt');
   }, [selectedFilter]) ?? [];
 
-  // Seed sample small-web blogs on first ever load if database is empty
+  // Seed sample small-web blogs on cold start if database is empty
   useEffect(() => {
     async function checkAndSeed() {
       const feedCount = await localDB.feeds.count();
       if (feedCount === 0) {
-        // Automatically add first 2 well-known small-web feeds to deliver an immediate experience
         try {
           const sampleFeeds = SEED_BLOGS.slice(0, 2);
           for (const s of sampleFeeds) {
@@ -62,7 +77,6 @@ export default function HomePage() {
   // Global Keyboard Navigation (j, k, Enter, o, s, m, /, ?)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Ignore shortcut keys when typing inside an input or textarea
       const target = e.target as HTMLElement;
       if (
         target &&
@@ -127,7 +141,9 @@ export default function HomePage() {
       if (activePostId) {
         if (e.key === 's') {
           e.preventDefault();
-          toggleStarred(activePostId);
+          toggleStarred(activePostId).then((isStarred) => {
+            uiStore.showToast(isStarred ? 'Saved to Starred ⭐' : 'Removed from Starred');
+          });
           return;
         }
 
@@ -135,7 +151,9 @@ export default function HomePage() {
           e.preventDefault();
           const currentPost = posts.find((p) => p.id === activePostId);
           if (currentPost) {
-            markPostRead(activePostId, !currentPost.isRead);
+            markPostRead(activePostId, !currentPost.isRead).then(() => {
+              uiStore.showToast(!currentPost.isRead ? 'Marked as read' : 'Marked as unread');
+            });
           }
           return;
         }
@@ -156,9 +174,9 @@ export default function HomePage() {
   }, [posts, activePostId]);
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden bg-reader-bg text-reader-text select-none">
-      {/* ── Desktop Left Sidebar (Fixed 260px) ────────────────── */}
-      <div className="hidden lg:block w-64 xl:w-72 shrink-0 h-full">
+    <div className="w-screen h-screen flex overflow-hidden bg-reader-bg text-reader-text select-none transition-colors">
+      {/* ── Desktop Left Sidebar (Fixed 256px) ───────────────── */}
+      <div className="hidden lg:block w-64 shrink-0 h-full">
         <Sidebar />
       </div>
 
@@ -182,20 +200,41 @@ export default function HomePage() {
         ) : view === 'discover' ? (
           <DiscoverPage />
         ) : (
-          /* Timeline + Reader View Layout */
+          /* Timeline + Resizable Reader Layout */
           <div className="w-full h-full flex overflow-hidden">
-            {/* Middle Timeline Pane */}
+            {/* Middle Timeline Pane (Resizable) */}
             <div
-              className={`h-full border-r border-reader-border shrink-0 ${
-                activePostId ? 'hidden md:block md:w-80 lg:w-96' : 'w-full md:w-80 lg:w-96'
+              style={{
+                width: isReaderExpanded ? 0 : undefined,
+                maxWidth: isReaderExpanded ? 0 : undefined,
+              }}
+              className={`h-full shrink-0 transition-[width] duration-150 ${
+                isReaderExpanded
+                  ? 'hidden'
+                  : activePostId
+                  ? 'hidden md:block'
+                  : 'w-full md:block'
               }`}
             >
-              <Timeline />
+              <div
+                style={{ width: `${timelineWidth}px` }}
+                className="h-full hidden md:block"
+              >
+                <Timeline />
+              </div>
+              <div className="h-full md:hidden w-full">
+                <Timeline />
+              </div>
             </div>
+
+            {/* Draggable Divider (Desktop only, hidden in focus mode) */}
+            {!isReaderExpanded && (
+              <ResizeHandle sidebarWidth={256} />
+            )}
 
             {/* Right Reader Pane */}
             <div
-              className={`flex-1 h-full ${
+              className={`flex-1 h-full min-w-0 ${
                 !activePostId ? 'hidden md:flex' : 'flex'
               }`}
             >
@@ -205,8 +244,16 @@ export default function HomePage() {
         )}
       </div>
 
+      {/* ── Toast Notification Pill ──────────────────────────── */}
+      {toastMessage && (
+        <div className="fixed bottom-16 sm:bottom-6 right-6 z-50 bg-reader-surface border border-reader-accent/40 text-reader-text px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <span className="w-2 h-2 rounded-full bg-reader-accent animate-pulse" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* ── Mobile Bottom Navigation Bar ─────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-14 bg-reader-surface/95 backdrop-blur-md border-t border-reader-border flex items-center justify-around px-2 z-40">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-14 bg-reader-surface/95 backdrop-blur-md border-t border-reader-border flex items-center justify-around px-2 z-40 transition-colors">
         <button
           onClick={() => {
             uiStore.setView('timeline');
@@ -238,7 +285,7 @@ export default function HomePage() {
           onClick={() => uiStore.setAddFeedOpen(true)}
           className="flex flex-col items-center justify-center p-1 text-[10px] font-medium text-reader-dim hover:text-reader-muted"
         >
-          <div className="w-8 h-8 rounded-full bg-reader-accent text-reader-bg flex items-center justify-center -mt-3 shadow-md">
+          <div className="w-8 h-8 rounded-full bg-reader-accent text-reader-bg flex items-center justify-center -mt-3 shadow-md active:scale-95 transition-transform">
             <Plus className="w-5 h-5" />
           </div>
           <span>Add</span>
@@ -255,11 +302,20 @@ export default function HomePage() {
           <Sparkles className="w-5 h-5 mb-0.5" />
           <span>Discover</span>
         </button>
+
+        <button
+          onClick={() => uiStore.setSettingsOpen(true)}
+          className="flex flex-col items-center justify-center p-1 text-[10px] font-medium text-reader-dim hover:text-reader-muted"
+        >
+          <Settings className="w-5 h-5 mb-0.5" />
+          <span>Settings</span>
+        </button>
       </nav>
 
       {/* ── Global Modals ────────────────────────────────────── */}
       <AddFeedModal />
       <ShortcutsModal />
+      <SettingsModal />
     </div>
   );
 }

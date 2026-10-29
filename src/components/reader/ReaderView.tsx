@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useTransition } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { localDB, CachedArticle, LocalPost } from '@/lib/client/db';
 import {
@@ -27,17 +27,22 @@ import {
   ArrowLeft,
   Calendar,
   User,
+  Maximize2,
+  Minimize2,
+  Settings,
 } from 'lucide-react';
 
 export function ReaderView() {
   const activePostId = useUIStore((s) => s.activePostId);
   const fontFamily = useUIStore((s) => s.fontFamily);
   const fontSize = useUIStore((s) => s.fontSize);
+  const lineHeight = useUIStore((s) => s.lineHeight);
+  const readingWidth = useUIStore((s) => s.readingWidth);
+  const isReaderExpanded = useUIStore((s) => s.isReaderExpanded);
   const isOffline = useUIStore((s) => s.isOffline);
 
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
-  const [copiedShare, setCopiedShare] = useState(false);
 
   // 1. Reactive query for the active post metadata
   const post = useLiveQuery(() => {
@@ -93,9 +98,26 @@ export function ReaderView() {
       navigator.share({ title: post.title, url: post.link }).catch(() => {});
     } else {
       navigator.clipboard.writeText(post.link);
-      setCopiedShare(true);
-      setTimeout(() => setCopiedShare(false), 2000);
+      uiStore.showToast('Article link copied to clipboard');
     }
+  }
+
+  // Handle Toggle Star
+  async function handleToggleStar() {
+    if (!post) return;
+    try {
+      const isStarred = await toggleStarred(post.id);
+      uiStore.showToast(isStarred ? 'Saved to Starred ⭐' : 'Removed from Starred');
+    } catch {
+      uiStore.showToast('Failed to update star state');
+    }
+  }
+
+  // Handle Toggle Read
+  async function handleToggleRead() {
+    if (!post) return;
+    await markPostRead(post.id, !post.isRead);
+    uiStore.showToast(!post.isRead ? 'Marked as read' : 'Marked as unread');
   }
 
   // Typography class calculations
@@ -107,10 +129,23 @@ export function ReaderView() {
     xl: 'text-xl',
   }[fontSize];
 
+  const leadingClass = {
+    compact: 'leading-normal',
+    comfortable: 'leading-relaxed',
+    relaxed: 'leading-loose',
+  }[lineHeight];
+
+  const widthClass = {
+    narrow: 'max-w-xl',
+    medium: 'max-w-2xl',
+    wide: 'max-w-3xl',
+    full: 'max-w-5xl',
+  }[readingWidth];
+
   // If no article is selected
   if (!activePostId || !post) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-reader-surface select-none">
+      <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-reader-surface select-none transition-colors">
         <div className="max-w-sm space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-reader-selected/60 border border-reader-border flex items-center justify-center mx-auto text-reader-accent shadow-sm">
             <BookOpen className="w-7 h-7" />
@@ -120,7 +155,7 @@ export function ReaderView() {
               No Article Selected
             </h2>
             <p className="text-xs text-reader-muted mt-1 leading-relaxed">
-              Choose an article from the timeline to start reading in this distraction-free, privacy-preserving pane.
+              Choose an article from the timeline to start reading in this distraction-free, customizable reading surface.
             </p>
           </div>
           <div className="pt-2 flex flex-wrap justify-center gap-1.5 text-[11px] text-reader-dim">
@@ -154,14 +189,14 @@ export function ReaderView() {
     Math.max(1, Math.ceil((post.summary.split(/\s+/).length || 50) / 180));
 
   return (
-    <article className="w-full h-full flex flex-col bg-reader-surface overflow-hidden">
+    <article className="w-full h-full flex flex-col bg-reader-surface overflow-hidden transition-colors">
       {/* ── Reader Header Toolbar ────────────────────────────── */}
       <div className="p-3.5 sm:px-6 border-b border-reader-border bg-reader-surface/90 backdrop-blur-sm flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           {/* Mobile Back Button */}
           <button
             onClick={() => uiStore.setMobileReaderOpen(false)}
-            className="lg:hidden p-1.5 -ml-1 text-reader-muted hover:text-reader-text rounded-md"
+            className="lg:hidden p-1.5 -ml-1 text-reader-muted hover:text-reader-text rounded-md active:scale-95"
             aria-label="Back to timeline"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -191,7 +226,7 @@ export function ReaderView() {
             onClick={() =>
               uiStore.setFontFamily(fontFamily === 'sans' ? 'serif' : 'sans')
             }
-            className="p-1.5 text-xs text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-md transition-colors flex items-center gap-1"
+            className="p-1.5 text-xs text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-md transition-colors flex items-center gap-1 active:scale-95"
             title={`Switch to ${fontFamily === 'sans' ? 'Serif' : 'Sans-serif'} font`}
           >
             <Type className="w-3.5 h-3.5" />
@@ -205,7 +240,7 @@ export function ReaderView() {
             <button
               onClick={() => uiStore.decreaseFontSize()}
               disabled={fontSize === 'sm'}
-              className="p-1 text-reader-muted hover:text-reader-text disabled:opacity-30"
+              className="p-1 text-reader-muted hover:text-reader-text disabled:opacity-30 active:scale-95"
               title="Decrease text size"
             >
               <Minus className="w-3 h-3" />
@@ -214,37 +249,53 @@ export function ReaderView() {
             <button
               onClick={() => uiStore.increaseFontSize()}
               disabled={fontSize === 'xl'}
-              className="p-1 text-reader-muted hover:text-reader-text disabled:opacity-30"
+              className="p-1 text-reader-muted hover:text-reader-text disabled:opacity-30 active:scale-95"
               title="Increase text size"
             >
               <Plus className="w-3 h-3" />
             </button>
           </div>
 
-          {/* Star Toggle */}
+          {/* Focus / Expansion Toggle (Desktop) */}
           <button
-            onClick={() => toggleStarred(post.id)}
-            className={`p-1.5 rounded-md transition-colors ${
+            onClick={() => uiStore.toggleReaderExpanded()}
+            className="hidden md:flex p-1.5 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-md transition-colors active:scale-95"
+            title={isReaderExpanded ? 'Exit Focus Mode' : 'Focus Mode (Expand Reader)'}
+          >
+            {isReaderExpanded ? (
+              <Minimize2 className="w-4 h-4 text-reader-accent" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
+          </button>
+
+          {/* Star Toggle (FIXED with immediate reactive toggle & pop animation) */}
+          <button
+            onClick={handleToggleStar}
+            className={`p-1.5 rounded-md transition-all active:scale-75 ${
               post.isStarred
-                ? 'text-amber-400 hover:text-amber-300'
+                ? 'text-amber-500 hover:text-amber-600'
                 : 'text-reader-muted hover:text-reader-text hover:bg-reader-selected'
             }`}
-            title={post.isStarred ? 'Starred article' : 'Star article'}
+            title={post.isStarred ? 'Starred article (click to unstar)' : 'Star article (s)'}
+            aria-label={post.isStarred ? 'Starred article' : 'Star article'}
           >
             <Star
-              className={`w-4 h-4 ${post.isStarred ? 'fill-amber-400' : ''}`}
+              className={`w-4 h-4 transition-transform ${
+                post.isStarred ? 'fill-amber-400 text-amber-500 animate-star-pop' : ''
+              }`}
             />
           </button>
 
           {/* Read / Unread Toggle */}
           <button
-            onClick={() => markPostRead(post.id, !post.isRead)}
-            className={`p-1.5 rounded-md transition-colors ${
+            onClick={handleToggleRead}
+            className={`p-1.5 rounded-md transition-colors active:scale-95 ${
               post.isRead
-                ? 'text-emerald-400 hover:text-emerald-300'
+                ? 'text-emerald-500 hover:text-emerald-600'
                 : 'text-reader-muted hover:text-reader-text hover:bg-reader-selected'
             }`}
-            title={post.isRead ? 'Mark as unread' : 'Mark as read'}
+            title={post.isRead ? 'Mark as unread (m)' : 'Mark as read (m)'}
           >
             <CheckCircle2 className="w-4 h-4" />
           </button>
@@ -252,7 +303,7 @@ export function ReaderView() {
           {/* Share */}
           <button
             onClick={handleShare}
-            className="p-1.5 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-md transition-colors"
+            className="p-1.5 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-md transition-colors active:scale-95"
             title="Share or copy link"
           >
             <Share2 className="w-4 h-4" />
@@ -263,11 +314,20 @@ export function ReaderView() {
             href={post.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 text-reader-accent hover:text-reader-accentHover hover:bg-reader-selected rounded-md transition-colors flex items-center gap-1"
+            className="p-1.5 text-reader-accent hover:text-reader-accentHover hover:bg-reader-selected rounded-md transition-colors flex items-center gap-1 active:scale-95"
             title="Open original blog post (o)"
           >
             <ExternalLink className="w-4 h-4" />
           </a>
+
+          {/* Quick Settings */}
+          <button
+            onClick={() => uiStore.setSettingsOpen(true)}
+            className="p-1.5 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-md transition-colors"
+            title="Appearance Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
 
           {/* Close Reader */}
           <button
@@ -280,15 +340,9 @@ export function ReaderView() {
         </div>
       </div>
 
-      {copiedShare && (
-        <div className="bg-reader-accentBg text-reader-accent text-xs py-1 text-center border-b border-reader-accent/20 animate-in fade-in">
-          Link copied to clipboard!
-        </div>
-      )}
-
-      {/* ── Article Content Area (Spacious & Scrollable) ─────── */}
+      {/* ── Article Content Area (Scrollable & Width Configurable) ─ */}
       <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-12 lg:px-16">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className={`${widthClass} mx-auto space-y-6 transition-all duration-150`}>
           {/* Article Header */}
           <header className="space-y-4 pb-6 border-b border-reader-border">
             <h1 className="text-2xl sm:text-3xl font-bold text-reader-text tracking-tight leading-tight">
@@ -317,7 +371,7 @@ export function ReaderView() {
 
           {/* Full-text Extraction Loading State */}
           {isExtracting && !cachedArticle && (
-            <div className="p-4 bg-reader-selected/30 border border-reader-border rounded-lg flex items-center gap-3 text-xs text-reader-muted">
+            <div className="p-4 bg-reader-selected/40 border border-reader-border rounded-lg flex items-center gap-3 text-xs text-reader-muted animate-pulse">
               <Loader2 className="w-4 h-4 animate-spin text-reader-accent" />
               <span>Extracting clean reader view via Web Worker...</span>
             </div>
@@ -325,7 +379,7 @@ export function ReaderView() {
 
           {/* Article Body Content */}
           <div
-            className={`reader-content ${fontClass} ${sizeClass}`}
+            className={`reader-content ${fontClass} ${sizeClass} ${leadingClass}`}
             dangerouslySetInnerHTML={{
               __html:
                 cachedArticle?.content ||
@@ -366,7 +420,7 @@ export function ReaderView() {
                 href={post.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-reader-accent hover:underline"
+                className="text-reader-accent hover:underline font-medium"
               >
                 {feed?.title || post.feedId}
               </a>
@@ -377,4 +431,3 @@ export function ReaderView() {
     </article>
   );
 }
-

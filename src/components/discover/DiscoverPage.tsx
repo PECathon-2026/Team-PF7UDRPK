@@ -243,7 +243,7 @@ export function DiscoverPage() {
                 return (
                   <div
                     key={pick.normalizedUrl}
-                    className="relative bg-gradient-to-b from-reader-surface to-reader-surface/70 border border-reader-accent/25 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-md hover:border-reader-accent/50 transition-all"
+                    className="relative bg-reader-surface border border-reader-accent/30 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-md hover:border-reader-accent/60 transition-all"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">

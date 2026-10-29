@@ -14,8 +14,7 @@ import {
   Sparkles,
   Inbox,
   Filter,
-  ArrowUpDown,
-  BookOpen,
+  Maximize2,
   Menu,
 } from 'lucide-react';
 
@@ -60,24 +59,24 @@ export function Timeline() {
     return undefined;
   }, [selectedFilter]);
 
-  // Reactive query for posts based on filter selection
+  // FIXED: Reactive query for posts based on filter selection using boolean filter
   const rawPosts = useLiveQuery(() => {
     if (selectedFilter === 'all') {
       return localDB.posts.orderBy('publishedAt').reverse().toArray();
     }
     if (selectedFilter === 'unread') {
       return localDB.posts
-        .where('isRead')
-        .equals(0)
+        .orderBy('publishedAt')
         .reverse()
-        .sortBy('publishedAt');
+        .filter((p) => !p.isRead)
+        .toArray();
     }
     if (selectedFilter === 'starred') {
       return localDB.posts
-        .where('isStarred')
-        .equals(1)
+        .orderBy('publishedAt')
         .reverse()
-        .sortBy('publishedAt');
+        .filter((p) => Boolean(p.isStarred))
+        .toArray();
     }
     // Filter by single feed ID
     return localDB.posts
@@ -122,11 +121,22 @@ export function Timeline() {
     }
   }
 
+  async function handleToggleStar(e: React.MouseEvent, postId: string) {
+    e.stopPropagation();
+    try {
+      const isStarred = await toggleStarred(postId);
+      uiStore.showToast(isStarred ? 'Saved to Starred ⭐' : 'Removed from Starred');
+    } catch {
+      uiStore.showToast('Failed to update star state');
+    }
+  }
+
   async function handleMarkAllAsRead() {
     const unreadIds = filteredPosts.filter((p) => !p.isRead).map((p) => p.id);
     if (unreadIds.length === 0) return;
 
     await Promise.all(unreadIds.map((id) => markPostRead(id, true)));
+    uiStore.showToast(`Marked ${unreadIds.length} articles as read`);
   }
 
   // Determine Title for Timeline header
@@ -138,9 +148,9 @@ export function Timeline() {
   }, [selectedFilter, activeFeed]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-reader-bg border-r border-reader-border select-none overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-reader-bg border-r border-reader-border select-none overflow-hidden transition-colors">
       {/* ── Timeline Header ─────────────────────────────────── */}
-      <div className="p-4 border-b border-reader-border bg-reader-surface/40 backdrop-blur-sm space-y-3">
+      <div className="p-4 border-b border-reader-border bg-reader-surface/50 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             {/* Mobile menu button */}
@@ -164,7 +174,7 @@ export function Timeline() {
             {/* Mark all as read */}
             <button
               onClick={handleMarkAllAsRead}
-              className="p-1.5 text-xs text-reader-muted hover:text-reader-accent hover:bg-reader-selected rounded-md transition-colors flex items-center gap-1"
+              className="p-1.5 text-xs text-reader-muted hover:text-reader-accent hover:bg-reader-selected rounded-md transition-colors flex items-center gap-1 active:scale-95"
               title="Mark all visible as read"
             >
               <CheckCheck className="w-3.5 h-3.5" />
@@ -199,7 +209,7 @@ export function Timeline() {
             placeholder="Search articles in timeline (/)..."
             value={searchQuery}
             onChange={(e) => uiStore.setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-8 py-1.5 bg-reader-surface border border-reader-border rounded-lg text-xs text-reader-text placeholder-reader-dim focus:outline-none focus:border-reader-accent transition-colors"
+            className="w-full pl-8 pr-8 py-1.5 bg-reader-surface border border-reader-border rounded-lg text-xs text-reader-text placeholder-reader-dim focus:outline-none focus:border-reader-accent transition-colors shadow-sm"
           />
           {searchQuery && (
             <button
@@ -216,34 +226,34 @@ export function Timeline() {
       <div className="flex-1 overflow-y-auto divide-y divide-reader-borderMuted">
         {visiblePosts.length === 0 ? (
           <div className="p-8 text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-reader-surface border border-reader-border flex items-center justify-center mx-auto text-reader-dim">
+            <div className="w-10 h-10 rounded-full bg-reader-surface border border-reader-border flex items-center justify-center mx-auto text-reader-dim shadow-sm">
               {searchQuery ? (
                 <Search className="w-5 h-5" />
               ) : selectedFilter === 'unread' || timelineSubFilter === 'unread' ? (
-                <CheckCheck className="w-5 h-5 text-emerald-400" />
+                <CheckCheck className="w-5 h-5 text-emerald-500" />
               ) : selectedFilter === 'starred' ? (
-                <Star className="w-5 h-5 text-amber-400" />
+                <Star className="w-5 h-5 text-amber-500 fill-amber-500/20" />
               ) : (
                 <Inbox className="w-5 h-5" />
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-reader-text">
+              <p className="text-sm font-semibold text-reader-text">
                 {searchQuery
                   ? 'No articles match your search'
                   : selectedFilter === 'unread' || timelineSubFilter === 'unread'
                   ? 'All caught up! 🎉'
                   : selectedFilter === 'starred'
-                  ? 'No starred articles yet'
+                  ? 'No Starred Articles Yet'
                   : 'No articles in this feed'}
               </p>
-              <p className="text-xs text-reader-muted mt-1 max-w-xs mx-auto">
+              <p className="text-xs text-reader-muted mt-1 max-w-xs mx-auto leading-relaxed">
                 {searchQuery
                   ? 'Try searching for a different term or clear the filter.'
                   : selectedFilter === 'unread'
                   ? 'You have read all articles in this view.'
                   : selectedFilter === 'starred'
-                  ? 'Star articles to keep them for quick reference anytime.'
+                  ? 'Click the star icon on any article to save it here for quick reference.'
                   : 'Sync the feed or add new subscriptions from the Explore catalog.'}
               </p>
             </div>
@@ -260,7 +270,7 @@ export function Timeline() {
                 className={`group relative p-3.5 cursor-pointer transition-colors ${
                   isSelected
                     ? 'bg-reader-selected'
-                    : 'hover:bg-reader-surfaceHover/60'
+                    : 'hover:bg-reader-surfaceHover/80'
                 }`}
               >
                 {/* Active selection accent bar */}
@@ -269,12 +279,12 @@ export function Timeline() {
                 )}
 
                 <div className="space-y-1.5 pl-1">
-                  {/* Top line: Source / Author, Timestamp, Unread dot */}
+                  {/* Top line: Source / Author, Timestamp, Unread dot, Star toggle */}
                   <div className="flex items-center justify-between text-[11px] text-reader-dim">
                     <div className="flex items-center gap-1.5 min-w-0 pr-2">
                       {!post.isRead && (
                         <span
-                          className="w-2 h-2 rounded-full bg-reader-unread shrink-0 animate-pulse"
+                          className="w-2 h-2 rounded-full bg-reader-unread shrink-0"
                           title="Unread"
                         />
                       )}
@@ -285,21 +295,20 @@ export function Timeline() {
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-reader-dim">{relativeTime}</span>
+                      {/* FIXED: Star button with pop animation and feedback */}
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleStarred(post.id);
-                        }}
-                        className={`p-1 rounded transition-colors ${
+                        onClick={(e) => handleToggleStar(e, post.id)}
+                        className={`p-1 rounded-md transition-all active:scale-75 ${
                           post.isStarred
-                            ? 'text-amber-400 hover:text-amber-300'
+                            ? 'text-amber-500 hover:text-amber-600'
                             : 'text-reader-dim hover:text-reader-text'
                         }`}
                         title={post.isStarred ? 'Unstar article' : 'Star article'}
+                        aria-label={post.isStarred ? 'Unstar article' : 'Star article'}
                       >
                         <Star
-                          className={`w-3.5 h-3.5 ${
-                            post.isStarred ? 'fill-amber-400' : ''
+                          className={`w-3.5 h-3.5 transition-transform ${
+                            post.isStarred ? 'fill-amber-400 text-amber-500 animate-star-pop' : ''
                           }`}
                         />
                       </button>
@@ -312,7 +321,7 @@ export function Timeline() {
                       !post.isRead
                         ? 'font-semibold text-reader-text'
                         : 'font-normal text-reader-muted'
-                    } ${isSelected ? 'text-reader-accent' : ''}`}
+                    } ${isSelected ? 'text-reader-accent font-semibold' : ''}`}
                   >
                     {post.title}
                   </h3>
@@ -344,4 +353,3 @@ export function Timeline() {
     </div>
   );
 }
-

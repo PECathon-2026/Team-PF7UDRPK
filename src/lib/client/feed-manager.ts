@@ -437,11 +437,17 @@ export async function markPostRead(postId: string, isRead: boolean): Promise<voi
 }
 
 /** Toggle the starred state of a post. */
-export async function toggleStarred(postId: string): Promise<void> {
+export async function toggleStarred(postId: string): Promise<boolean> {
   const post = await localDB.posts.get(postId);
-  if (post) {
-    await localDB.posts.update(postId, { isStarred: !post.isStarred });
-  }
+  if (!post) throw new Error('Post not found in IndexedDB: ' + postId);
+  const nextStarred = !Boolean(post.isStarred);
+  await localDB.posts.update(postId, { isStarred: nextStarred });
+  return nextStarred;
+}
+
+/** Explicitly set the starred state of a post. */
+export async function setPostStarred(postId: string, isStarred: boolean): Promise<void> {
+  await localDB.posts.update(postId, { isStarred: Boolean(isStarred) });
 }
 
 // ── Topic Aggregation (for Member A's Discovery view) ────────────────────────
