@@ -6,6 +6,7 @@ import * as schema from './schema';
 
 let dbInstance: any = null;
 let pgliteClient: PGlite | null = null;
+let cloudDbUnreachable = false;
 
 /**
  * Creates the required schema in PGlite if running in-memory
@@ -54,12 +55,12 @@ export async function getDb() {
 
   const databaseUrl = process.env.DATABASE_URL;
 
-  if (databaseUrl && databaseUrl.trim().length > 0) {
+  if (!cloudDbUnreachable && databaseUrl && databaseUrl.trim().length > 0) {
     try {
       const pool = new Pool({
         connectionString: databaseUrl,
         ssl: databaseUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-        connectionTimeoutMillis: 3500, // 3.5s timeout for local networks with port blocks
+        connectionTimeoutMillis: 2000,
       });
 
       // Quick probe to verify network reachability
@@ -69,6 +70,7 @@ export async function getDb() {
       dbInstance = drizzlePg(pool, { schema });
       return dbInstance;
     } catch (err: any) {
+      cloudDbUnreachable = true;
       console.warn(
         `⚠️ Cloud database unreachable on this local network (${err.message}). Seamlessly falling back to embedded in-memory PGlite for local execution.`
       );

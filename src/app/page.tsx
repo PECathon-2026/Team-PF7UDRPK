@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from 'react';
 
 export default function DiscoveryTesterPage() {
-  const [selectedFeeds, setSelectedFeeds] = useState<string[]>(['danluu.com']);
+  const [selectedFeeds, setSelectedFeeds] = useState<string[]>([
+    'https://danluu.com/atom.xml',
+  ]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [batchInput, setBatchInput] = useState('https://danluu.com/atom.xml\nhttps://xeiaso.net/blog.rss');
@@ -131,8 +133,22 @@ export default function DiscoveryTesterPage() {
             Submit Batch to Discovery API
           </button>
           {batchResult && (
-            <div style={{ marginTop: 10, padding: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, fontSize: 12, color: '#166534' }}>
-              ✓ Recorded Batch: <code>{batchResult.batchId}</code> ({batchResult.processedFeedsCount} feeds)
+            <div
+              style={{
+                marginTop: 10,
+                padding: 8,
+                background: batchResult.error ? '#fef2f2' : '#f0fdf4',
+                border: batchResult.error ? '1px solid #fecaca' : '1px solid #bbf7d0',
+                borderRadius: 6,
+                fontSize: 12,
+                color: batchResult.error ? '#b91c1c' : '#166534',
+              }}
+            >
+              {batchResult.error ? (
+                <>❌ Error: {batchResult.error}</>
+              ) : (
+                <>✓ Recorded Batch: <code>{batchResult.batchId}</code> ({batchResult.processedFeedsCount} feeds)</>
+              )}
             </div>
           )}
         </div>
@@ -182,3 +198,4 @@ export default function DiscoveryTesterPage() {
     </main>
   );
 }
+
