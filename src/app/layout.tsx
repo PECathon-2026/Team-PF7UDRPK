@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Small Web Reader - Discovery Engine Tester',
-  description: 'Anonymous Co-subscription Discovery for Independent Blogs',
+  title: 'Small Web Reader',
+  description: 'A privacy-first RSS reader and anonymous discovery engine for the small web.',
 };
 
 export default function RootLayout({
@@ -19,4 +19,3 @@ export default function RootLayout({
     </html>
   );
 }
-

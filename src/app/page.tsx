@@ -19,8 +19,8 @@ export default function Home() {
           Small Web Reader
         </h1>
         <p className="text-sm text-slate-500 leading-relaxed">
-          The base repository and <strong>Discovery Engine (Member D)</strong> are fully operational.
-          This home view is ready for <strong>Member A</strong> to build the 3-pane timeline interface.
+          The base repository and <strong>Discovery Engine (Member D)</strong> & <strong>Security/Proxy (Member C)</strong> are fully operational.
+          This root view is ready for <strong>Member A</strong> to build the 3-pane timeline interface.
         </p>
         <div className="pt-2 border-t border-slate-100">
           <a

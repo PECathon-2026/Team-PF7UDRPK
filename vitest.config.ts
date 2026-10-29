@@ -3,8 +3,10 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    globals: true,
     environment: 'node',
+    globals: true,
+    isolate: true,
+    testTimeout: 15000,
   },
   resolve: {
     alias: {
@@ -12,4 +14,3 @@ export default defineConfig({
     },
   },
 });
-
