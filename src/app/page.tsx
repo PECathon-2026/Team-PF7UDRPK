@@ -19,13 +19,19 @@ export default function Home() {
           Small Web Reader
         </h1>
         <p className="text-sm text-slate-500 leading-relaxed">
-          The base repository and <strong>Discovery Engine (Member D)</strong> & <strong>Security/Proxy (Member C)</strong> are fully operational.
+          The base repository, <strong>Client Feed Engine (Member B)</strong>, <strong>Security/Proxy (Member C)</strong>, and <strong>Discovery Engine (Member D)</strong> are fully operational.
           This root view is ready for <strong>Member A</strong> to build the 3-pane timeline interface.
         </p>
-        <div className="pt-2 border-t border-slate-100">
+        <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+          <a
+            href="/debug/client-engine"
+            className="inline-flex items-center justify-center text-xs font-semibold text-amber-600 hover:text-amber-700 hover:underline"
+          >
+            Launch Member B Client Feed Engine Tester →
+          </a>
           <a
             href="/debug/discovery"
-            className="inline-flex items-center text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+            className="inline-flex items-center justify-center text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
           >
             Launch Member D Discovery Engine Tester →
           </a>

@@ -7,6 +7,10 @@ export default defineConfig({
     globals: true,
     isolate: true,
     testTimeout: 15000,
+    setupFiles: ['./src/lib/client/__tests__/setup.ts'],
+    environmentMatchGlobs: [
+      ['**/src/lib/client/**', 'jsdom'],
+    ],
   },
   resolve: {
     alias: {
