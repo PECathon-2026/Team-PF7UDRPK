@@ -55,15 +55,27 @@ export async function getDb() {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (databaseUrl && databaseUrl.trim().length > 0) {
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: databaseUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-    });
-    dbInstance = drizzlePg(pool, { schema });
-    return dbInstance;
+    try {
+      const pool = new Pool({
+        connectionString: databaseUrl,
+        ssl: databaseUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 3500, // 3.5s timeout for local networks with port blocks
+      });
+
+      // Quick probe to verify network reachability
+      const probeClient = await pool.connect();
+      probeClient.release();
+
+      dbInstance = drizzlePg(pool, { schema });
+      return dbInstance;
+    } catch (err: any) {
+      console.warn(
+        `⚠️ Cloud database unreachable on this local network (${err.message}). Seamlessly falling back to embedded in-memory PGlite for local execution.`
+      );
+    }
   }
 
-  // Fallback to embedded PGlite
+  // Fallback to embedded in-memory PGlite
   if (!pgliteClient) {
     pgliteClient = new PGlite();
     await initializeSchemaInPglite(pgliteClient);
