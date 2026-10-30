@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import {
   useUIStore,
@@ -12,6 +12,10 @@ import {
   ReadingWidth,
 } from '@/lib/client/ui-store';
 import {
+  exportSubscriptionsToOpml,
+  importSubscriptionsFromOpml,
+} from '@/lib/client/feed-manager';
+import {
   Sun,
   Moon,
   Monitor,
@@ -20,6 +24,10 @@ import {
   Sliders,
   RotateCcw,
   Sparkles,
+  Download,
+  Upload,
+  Loader2,
+  FileText,
 } from 'lucide-react';
 
 export function SettingsModal() {
@@ -31,6 +39,10 @@ export function SettingsModal() {
   const readingWidth = useUIStore((s) => s.readingWidth);
   const timelineWidth = useUIStore((s) => s.timelineWidth);
 
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   function handleReset() {
     uiStore.setTheme('dark');
     uiStore.setFontFamily('sans');
@@ -41,11 +53,55 @@ export function SettingsModal() {
     uiStore.showToast('Appearance settings reset to default');
   }
 
+  async function handleExportOpml() {
+    setIsExporting(true);
+    try {
+      const xml = await exportSubscriptionsToOpml();
+      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `smallweb-subscriptions-${new Date().toISOString().slice(0, 10)}.opml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      uiStore.showToast('Subscriptions exported to OPML file');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Export failed';
+      uiStore.showToast(`OPML Export failed: ${msg}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const summary = await importSubscriptionsFromOpml(text);
+      uiStore.showToast(
+        `OPML: Imported ${summary.succeeded} of ${summary.total} feeds (${summary.failed} failed)`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Invalid OPML file';
+      uiStore.showToast(`Import error: ${msg}`);
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => uiStore.setSettingsOpen(false)}
-      title="Settings & Appearance"
+      title="Settings &amp; Appearance"
       description="Personalize your reading interface, themes, and workspace layout."
       maxWidth="lg"
     >
@@ -97,7 +153,7 @@ export function SettingsModal() {
           </div>
         </div>
 
-        {/* ── Reader Typography ─────────────────────────────── */}
+        {/* ── Reader Typography ─────────────────────────────────────────── */}
         <div className="space-y-3 pt-4 border-t border-reader-borderMuted">
           <label className="text-xs font-semibold text-reader-text uppercase tracking-wider block">
             Reader Typography
@@ -117,7 +173,7 @@ export function SettingsModal() {
                       : 'bg-reader-bg text-reader-muted border-reader-border hover:text-reader-text'
                   }`}
                 >
-                  Sans-serif
+                  Sans-Serif
                 </button>
                 <button
                   type="button"
@@ -200,7 +256,7 @@ export function SettingsModal() {
           </div>
         </div>
 
-        {/* ── Layout & Pane Width ────────────────────────────── */}
+        {/* ── Layout & Pane Width ────────────────────────────────────────── */}
         <div className="space-y-3 pt-4 border-t border-reader-borderMuted">
           <label className="text-xs font-semibold text-reader-text uppercase tracking-wider block">
             Workspace Panes
@@ -228,6 +284,55 @@ export function SettingsModal() {
           </div>
         </div>
 
+        {/* ── Subscriptions & Data Portability (OPML) ───────────────────── */}
+        <div className="space-y-3 pt-4 border-t border-reader-borderMuted">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-reader-text uppercase tracking-wider block">
+              Subscription Portability (OPML)
+            </label>
+            <span className="text-[10px] text-reader-dim font-mono">Standard OPML 2.0</span>
+          </div>
+          <p className="text-xs text-reader-muted leading-relaxed">
+            Export all your followed feeds to take them to another reader, or import an OPML backup from NetNewsWire, Feedly, or Inoreader.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              onClick={handleExportOpml}
+              disabled={isExporting}
+              className="px-3 py-2.5 bg-reader-bg border border-reader-border hover:border-reader-accent/40 hover:bg-reader-surfaceHover text-reader-text rounded-xl transition-all flex items-center justify-center gap-2 text-xs font-medium disabled:opacity-50 active:scale-[0.98] touch-manipulation"
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 animate-spin text-reader-accent" />
+              ) : (
+                <Download className="w-4 h-4 text-reader-accent" />
+              )}
+              <span>Export OPML</span>
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              className="px-3 py-2.5 bg-reader-bg border border-reader-border hover:border-reader-accent/40 hover:bg-reader-surfaceHover text-reader-text rounded-xl transition-all flex items-center justify-center gap-2 text-xs font-medium disabled:opacity-50 active:scale-[0.98] touch-manipulation"
+            >
+              {isImporting ? (
+                <Loader2 className="w-4 h-4 animate-spin text-reader-accent" />
+              ) : (
+                <Upload className="w-4 h-4 text-reader-accent" />
+              )}
+              <span>Import OPML</span>
+            </button>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".opml,.xml,text/xml,application/xml"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+        </div>
+
         {/* ── Action Buttons (Sticky on mobile) ───────────────── */}
         <div className="pt-4 border-t border-reader-borderMuted flex items-center justify-between gap-3 sticky bottom-0 bg-reader-surface/95 backdrop-blur-sm -mx-4 -mb-4 px-4 py-3 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:pt-4">
           <button
@@ -251,4 +356,3 @@ export function SettingsModal() {
     </Modal>
   );
 }
-
