@@ -252,3 +252,4 @@ npm run trap-detector https://danluu.com/atom.xml https://danluu.com/feed.xml ht
 - **Database & ORM**: [PostgreSQL (Supabase)](https://supabase.com/), [@electric-sql/pglite](https://pglite.dev/), [Drizzle ORM 0.39](https://orm.drizzle.team/)
 - **Network & Security**: [ipaddr.js 2](https://github.com/whitequark/ipaddr.js), Web Crypto SHA-256
 - **Test Runner**: [Vitest 3.0](https://vitest.dev/) (182 tests)
+
