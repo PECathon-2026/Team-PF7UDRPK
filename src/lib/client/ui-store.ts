@@ -51,7 +51,7 @@ const defaultState: UIState = {
   resolvedTheme: 'dark',
   timelineWidth: 360,
   isReaderExpanded: false,
-  isSidebarExpanded: false,
+  isSidebarExpanded: true,
   isAddFeedOpen: false,
   isShortcutsOpen: false,
   isSettingsOpen: false,

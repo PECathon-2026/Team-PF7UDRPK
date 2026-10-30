@@ -177,7 +177,7 @@ export default function HomePage() {
   return (
     <div className="w-screen h-screen flex overflow-hidden bg-reader-bg text-reader-text select-none transition-colors">
       {/* ── Desktop Left Sidebar (Fixed 256px) ───────────────── */}
-      <div className={`hidden lg:block shrink-0 h-full transition-[width] duration-300 ease-in-out ${isSidebarExpanded ? 'w-64' : 'w-16'}`}>
+      <div className="hidden lg:block w-64 shrink-0 h-full">
         <Sidebar />
       </div>
 
@@ -230,7 +230,7 @@ export default function HomePage() {
 
             {/* Draggable Divider (Desktop only, hidden in focus mode) */}
             {!isReaderExpanded && (
-              <ResizeHandle sidebarWidth={isSidebarExpanded ? 256 : 64} />
+              <ResizeHandle sidebarWidth={256} />
             )}
 
             {/* Right Reader Pane */}
