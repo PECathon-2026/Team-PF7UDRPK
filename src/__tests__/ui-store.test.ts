@@ -16,6 +16,7 @@ describe('uiStore', () => {
       theme: 'dark',
       timelineWidth: 360,
       isReaderExpanded: false,
+      isSidebarExpanded: false,
       isAddFeedOpen: false,
       isShortcutsOpen: false,
       isSettingsOpen: false,
