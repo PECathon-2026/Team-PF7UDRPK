@@ -36,3 +36,9 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal Member Notes & Contexts
+MEMBER_B_CLIENT_ENGINE.md
+MEMBER_D_DISCOVERY_ENGINE.md
+*MEMBER_*
+*member_*

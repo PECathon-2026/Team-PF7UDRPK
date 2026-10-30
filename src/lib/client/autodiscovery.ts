@@ -16,21 +16,32 @@ export async function discoverFeedUrl(inputUrl: string): Promise<string> {
   const url = inputUrl.startsWith('http') ? inputUrl : `https://${inputUrl}`;
 
   // Step 1: Try the URL directly — maybe it's already a feed
-  let raw: string;
+  let raw: string | null = null;
   try {
     raw = await safeFetchThroughProxy(url);
   } catch {
-    throw new Error(`Could not reach ${url}`);
+    // If direct URL is unreachable or 404, we will probe the origin homepage
   }
 
-  const trimmed = raw.trimStart();
-  if (
-    trimmed.startsWith('<?xml') ||
-    trimmed.includes('<rss') ||
-    trimmed.includes('<feed xmlns') ||
-    trimmed.includes('<rdf:RDF')
-  ) {
-    return url;
+  if (raw) {
+    const trimmed = raw.trimStart();
+    if (
+      trimmed.startsWith('<?xml') ||
+      trimmed.includes('<rss') ||
+      trimmed.includes('<feed xmlns') ||
+      trimmed.includes('<rdf:RDF')
+    ) {
+      return url;
+    }
+  }
+
+  // If raw wasn't fetched, try origin homepage
+  if (!raw) {
+    try {
+      raw = await safeFetchThroughProxy(new URL(url).origin);
+    } catch {
+      // Continue to fallback probes
+    }
   }
 
   // Step 2: Parse <link rel="alternate"> from HTML
@@ -41,6 +52,7 @@ export async function discoverFeedUrl(inputUrl: string): Promise<string> {
     /<link[^>]+href=["']([^"']+)["'][^>]+type=["']application\/(rss|atom)\+xml["']/i,
   ];
 
+  if (raw) {
   for (const pattern of altLinkPatterns) {
     const match = raw.match(pattern);
     if (match) {
@@ -50,6 +62,7 @@ export async function discoverFeedUrl(inputUrl: string): Promise<string> {
         return href.startsWith('http') ? href : new URL(href, url).toString();
       }
     }
+  }
   }
 
   // Step 3: Probe fallback paths

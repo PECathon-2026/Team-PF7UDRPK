@@ -42,10 +42,10 @@ import {
 // ─── Configuration constants ──────────────────────────────────────
 
 /** Upstream fetch timeout (ms). From spec: 8 seconds. */
-export const FETCH_TIMEOUT_MS = 8_000;
+export const FETCH_TIMEOUT_MS = 15_000;
 
 /** Maximum allowed upstream response body size in bytes: 5 MB. */
-export const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+export const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 /** Maximum redirect hops to follow. */
 export const MAX_REDIRECTS = 3;
@@ -63,6 +63,11 @@ export const ALLOWED_CONTENT_TYPES = [
   'application/atom+xml',
   'application/feed+json',
   'text/plain',
+  'application/x-rss+xml',
+  'application/rdf+xml',
+  'text/rss+xml',
+  'text/atom+xml',
+  'application/xml+rss',
 ] as const;
 
 /**
@@ -136,7 +141,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!urlResult.ok) {
     const httpStatus =
       urlResult.error === 'DISALLOWED_SCHEME' ||
-      urlResult.error === 'BLOCKED_HOSTNAME'
+        urlResult.error === 'BLOCKED_HOSTNAME'
         ? 403
         : 400;
     return jsonError(httpStatus, urlResult.message, origin);
@@ -178,7 +183,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         });
       } catch (err) {
         if (controller.signal.aborted) {
-          return jsonError(504, 'Upstream request timed out after 8 seconds.', origin);
+          return jsonError(504, 'Upstream request timed out after 15 seconds.', origin);
         }
         return jsonError(
           400,

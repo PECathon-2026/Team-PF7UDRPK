@@ -25,6 +25,7 @@ export interface UIState {
   resolvedTheme: 'dark' | 'light';
   timelineWidth: number;
   isReaderExpanded: boolean;
+  isSidebarExpanded: boolean;
   isAddFeedOpen: boolean;
   isShortcutsOpen: boolean;
   isSettingsOpen: boolean;
@@ -50,6 +51,7 @@ const defaultState: UIState = {
   resolvedTheme: 'dark',
   timelineWidth: 360,
   isReaderExpanded: false,
+  isSidebarExpanded: false,
   isAddFeedOpen: false,
   isShortcutsOpen: false,
   isSettingsOpen: false,
@@ -170,6 +172,7 @@ export const uiStore = {
     uiStore.setState({
       selectedFilter: filter,
       view: 'timeline',
+      activePostId: null,
       isMobileDrawerOpen: false,
     });
   },
@@ -216,6 +219,14 @@ export const uiStore = {
 
   setReaderExpanded(expanded: boolean) {
     uiStore.setState({ isReaderExpanded: expanded });
+  },
+
+  setSidebarExpanded(expanded: boolean) {
+    uiStore.setState({ isSidebarExpanded: expanded });
+  },
+
+  toggleSidebarExpanded() {
+    uiStore.setState((prev) => ({ isSidebarExpanded: !prev.isSidebarExpanded }));
   },
 
   toggleReaderExpanded() {

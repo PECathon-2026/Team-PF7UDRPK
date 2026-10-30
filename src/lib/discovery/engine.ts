@@ -24,7 +24,7 @@ export interface RecommendationResponse {
  * Seeds initial small-web feeds and simulated anonymous reader batches
  * so discovery works on cold start.
  */
-export async function seedInitialFeeds(db: any) {
+export async function seedInitialFeeds(db: any): Promise<void> {
   // 1. Upsert seed blogs
   for (const blog of SEED_BLOGS) {
     const normalized = normalizeBlogUrl(blog.originalUrl);
@@ -35,14 +35,18 @@ export async function seedInitialFeeds(db: any) {
       .limit(1);
 
     if (existing.length === 0) {
-      await db.insert(feeds).values({
-        normalizedUrl: normalized,
-        originalUrl: blog.originalUrl,
-        title: blog.title,
-        siteUrl: blog.siteUrl,
-        subscriberCount: 3,
-        category: blog.category,
-      });
+      try {
+        await db.insert(feeds).values({
+          normalizedUrl: normalized,
+          originalUrl: blog.originalUrl,
+          title: blog.title,
+          siteUrl: blog.siteUrl,
+          subscriberCount: 3,
+          category: blog.category,
+        });
+      } catch {
+        // Ignore duplicate key race condition
+      }
     }
   }
 

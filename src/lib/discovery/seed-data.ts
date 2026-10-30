@@ -91,7 +91,7 @@ export const SEED_BLOGS: SeedBlog[] = [
   },
   {
     title: 'Arun Venkatesan',
-    originalUrl: 'https://www.arun.is/feed.xml',
+    originalUrl: 'https://www.arun.is/rss.xml',
     siteUrl: 'https://www.arun.is',
     category: 'hardware',
     description: 'Industrial design, Apple hardware aesthetics, tactile materials, and craftsmanship.',

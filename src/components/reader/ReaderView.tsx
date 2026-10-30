@@ -30,6 +30,8 @@ import {
   Maximize2,
   Minimize2,
   Settings,
+  Compass,
+  ChevronRight,
 } from 'lucide-react';
 
 export function ReaderView() {
@@ -142,37 +144,64 @@ export function ReaderView() {
     full: 'max-w-5xl',
   }[readingWidth];
 
-  // If no article is selected
-  if (!activePostId || !post) {
+  // If no article is selected -> Steady constant interactive empty state with 67913.png
+  if (!activePostId) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-reader-surface select-none transition-colors">
-        <div className="max-w-sm space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-reader-selected/60 border border-reader-border flex items-center justify-center mx-auto text-reader-accent shadow-sm">
-            <BookOpen className="w-7 h-7" />
+      <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-10 text-center bg-reader-surface select-none overflow-y-auto transition-colors">
+        <div className="w-full max-w-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+          {/* Proportional Image Container */}
+          <div className="w-full relative overflow-hidden rounded-2xl border border-reader-border bg-reader-bg/50 p-2 sm:p-3 shadow-md hover:border-reader-accent/40 transition-all duration-300">
+            <img
+              src="/67913.png"
+              alt="Explore Independent Small Web Blogs"
+              className="w-full h-auto object-contain rounded-xl shadow-inner transition-transform duration-300 hover:scale-[1.01]"
+            />
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-reader-text">
-              No Article Selected
+
+          {/* Descriptive Content */}
+          <div className="mt-6 text-center space-y-2 max-w-sm">
+            <h2 className="text-lg sm:text-xl font-bold text-reader-text tracking-tight">
+              Curate Your Quiet Corner of the Web
             </h2>
-            <p className="text-xs text-reader-muted mt-1 leading-relaxed">
-              Choose an article from the timeline to start reading in this distraction-free, customizable reading surface.
+            <p className="text-xs sm:text-sm text-reader-muted leading-relaxed">
+              Select an article from the timeline to start reading, or explore new independent blogs across the small web.
             </p>
           </div>
-          <div className="pt-2 flex flex-wrap justify-center gap-1.5 text-[11px] text-reader-dim">
-            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border">
-              <kbd>j</kbd> / <kbd>k</kbd> navigate
+
+          {/* 'Click to Explore' Interactive Button */}
+          <button
+            onClick={() => uiStore.setSidebarExpanded(true)}
+            className="mt-5 px-5 py-2.5 bg-reader-accent hover:bg-reader-accentHover text-reader-bg font-semibold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group active:scale-95 cursor-pointer"
+          >
+            <span>Click to Explore</span>
+            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1 duration-200" />
+          </button>
+
+          {/* Subtle Keyboard Shortcuts Hint */}
+          <div className="mt-8 pt-4 border-t border-reader-border/60 flex flex-wrap justify-center gap-2 text-[11px] text-reader-dim">
+            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border font-mono">
+              <kbd>j</kbd>/<kbd>k</kbd> navigate
             </span>
-            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border">
+            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border font-mono">
               <kbd>Enter</kbd> open
             </span>
-            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border">
+            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border font-mono">
               <kbd>s</kbd> star
             </span>
-            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border">
-              <kbd>o</kbd> original
+            <span className="px-2 py-0.5 bg-reader-bg rounded border border-reader-border font-mono">
+              <kbd>?</kbd> shortcuts
             </span>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // If an article is selected but still loading metadata from localDB
+  if (!post) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-reader-surface">
+        <Loader2 className="w-6 h-6 animate-spin text-reader-accent" />
       </div>
     );
   }
