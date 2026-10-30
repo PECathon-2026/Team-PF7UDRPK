@@ -45,7 +45,7 @@ import {
 export const FETCH_TIMEOUT_MS = 8_000;
 
 /** Maximum allowed upstream response body size in bytes: 5 MB. */
-export const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+export const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 /** Maximum redirect hops to follow. */
 export const MAX_REDIRECTS = 3;
@@ -136,7 +136,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!urlResult.ok) {
     const httpStatus =
       urlResult.error === 'DISALLOWED_SCHEME' ||
-      urlResult.error === 'BLOCKED_HOSTNAME'
+        urlResult.error === 'BLOCKED_HOSTNAME'
         ? 403
         : 400;
     return jsonError(httpStatus, urlResult.message, origin);
