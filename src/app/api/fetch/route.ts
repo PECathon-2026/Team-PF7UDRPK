@@ -141,7 +141,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!urlResult.ok) {
     const httpStatus =
       urlResult.error === 'DISALLOWED_SCHEME' ||
-      urlResult.error === 'BLOCKED_HOSTNAME'
+        urlResult.error === 'BLOCKED_HOSTNAME'
         ? 403
         : 400;
     return jsonError(httpStatus, urlResult.message, origin);

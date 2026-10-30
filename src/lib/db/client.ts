@@ -4,10 +4,54 @@ import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
 
+import { sql } from 'drizzle-orm';
+
 let dbInstance: any = null;
 let dbPromise: Promise<any> | null = null;
 let pgliteClient: PGlite | null = null;
 let cloudDbUnreachable = false;
+let schemaInitialized = false;
+
+/**
+ * Creates the required schema if running in Postgres or PGlite
+ */
+async function ensureTablesExist(db: any) {
+  if (schemaInitialized) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS feeds (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        normalized_url TEXT NOT NULL UNIQUE,
+        original_url TEXT NOT NULL,
+        title TEXT NOT NULL,
+        site_url TEXT,
+        subscriber_count INTEGER NOT NULL DEFAULT 1,
+        category TEXT NOT NULL DEFAULT 'general',
+        last_seen_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS anonymous_batches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMP NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS batch_feeds (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        batch_id UUID NOT NULL REFERENCES anonymous_batches(id) ON DELETE CASCADE,
+        feed_id UUID NOT NULL REFERENCES feeds(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_normalized_url ON feeds(normalized_url);
+      CREATE INDEX IF NOT EXISTS idx_category ON feeds(category);
+      CREATE INDEX IF NOT EXISTS idx_batch_feed_pair ON batch_feeds(batch_id, feed_id);
+      CREATE INDEX IF NOT EXISTS idx_feed_batch ON batch_feeds(feed_id, batch_id);
+    `);
+    schemaInitialized = true;
+  } catch (err: any) {
+    console.error('Failed to ensure database tables exist:', err);
+  }
+}
 
 /**
  * Creates the required schema in PGlite if running in-memory
@@ -74,6 +118,7 @@ export async function getDb() {
       probeClient.release();
 
       dbInstance = drizzlePg(pool, { schema });
+      await ensureTablesExist(dbInstance);
       return dbInstance;
     } catch (err: any) {
       cloudDbUnreachable = true;
