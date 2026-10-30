@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { useUIStore, uiStore } from '@/lib/client/ui-store';
-import { subscribeFeed } from '@/lib/client/feed-manager';
-import { Rss, Loader2, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { subscribeFeed, importSubscriptionsFromOpml } from '@/lib/client/feed-manager';
+import { Rss, Loader2, Sparkles, CheckCircle2, AlertCircle, Upload } from 'lucide-react';
 
 const SUGGESTED_FEEDS = [
   { name: 'Dan Luu', url: 'https://danluu.com' },
@@ -18,11 +18,13 @@ export function AddFeedModal() {
   const isOpen = useUIStore((s) => s.isAddFeedOpen);
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successFeedTitle, setSuccessFeedTitle] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleClose() {
-    if (isLoading) return;
+    if (isLoading || isImporting) return;
     uiStore.setAddFeedOpen(false);
     setUrl('');
     setError(null);
@@ -54,6 +56,28 @@ export function AddFeedModal() {
     }
   }
 
+  async function handleOpmlFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setError(null);
+    try {
+      const text = await file.text();
+      const summary = await importSubscriptionsFromOpml(text);
+      uiStore.showToast(
+        `Imported ${summary.succeeded} of ${summary.total} feeds from OPML (${summary.failed} failed)`
+      );
+      handleClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid OPML file';
+      setError(message);
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   return (
     <Modal
       isOpen={isOpen}
@@ -80,7 +104,7 @@ export function AddFeedModal() {
               id="feed-url-input"
               type="text"
               autoFocus
-              disabled={isLoading}
+              disabled={isLoading || isImporting}
               placeholder="e.g. https://danluu.com or https://jvns.ca/atom.xml"
               value={url}
               onChange={(e) => {
@@ -121,7 +145,7 @@ export function AddFeedModal() {
               <button
                 key={item.url}
                 type="button"
-                disabled={isLoading}
+                disabled={isLoading || isImporting}
                 onClick={() => {
                   setUrl(item.url);
                   handleSubscribe(item.url);
@@ -134,32 +158,54 @@ export function AddFeedModal() {
           </div>
         </div>
 
-        <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-reader-borderMuted">
+        <div className="pt-2 flex items-center justify-between gap-2.5 border-t border-reader-borderMuted">
           <button
             type="button"
-            disabled={isLoading}
-            onClick={handleClose}
-            className="px-4 py-2 text-xs font-medium text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || isImporting}
+            className="text-xs text-reader-muted hover:text-reader-accent flex items-center gap-1.5 transition-colors disabled:opacity-50"
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading || !url.trim()}
-            className="px-4 py-2 text-xs font-medium text-reader-bg bg-reader-accent hover:bg-reader-accentHover disabled:opacity-50 rounded-lg transition-colors font-semibold flex items-center gap-2 shadow-sm"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Subscribing...</span>
-              </>
+            {isImporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <span>Add Feed</span>
+              <Upload className="w-3.5 h-3.5" />
             )}
+            <span>{isImporting ? 'Importing OPML...' : 'Import OPML file'}</span>
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".opml,.xml,text/xml,application/xml"
+            onChange={handleOpmlFile}
+            className="hidden"
+          />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isLoading || isImporting}
+              onClick={handleClose}
+              className="px-3.5 py-2 text-xs font-medium text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || isImporting || !url.trim()}
+              className="px-4 py-2 text-xs font-medium text-reader-bg bg-reader-accent hover:bg-reader-accentHover disabled:opacity-50 rounded-lg transition-colors font-semibold flex items-center gap-2 shadow-sm"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Subscribing...</span>
+                </>
+              ) : (
+                <span>Add Feed</span>
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </Modal>
   );
 }
-
