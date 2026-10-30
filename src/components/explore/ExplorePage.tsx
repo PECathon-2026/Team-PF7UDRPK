@@ -37,7 +37,13 @@ export function ExplorePage() {
   // Live query for existing user subscriptions to detect subscribed state
   const subscribedFeeds = useLiveQuery(() => localDB.feeds.toArray(), []) ?? [];
   const subscribedUrlSet = useMemo(() => {
-    return new Set(subscribedFeeds.map((f) => f.url));
+    const set = new Set<string>();
+    for (const f of subscribedFeeds) {
+      set.add(f.url);
+      set.add(f.id);
+      set.add(f.url.replace(/\/$/, ''));
+    }
+    return set;
   }, [subscribedFeeds]);
 
   // Filter catalog by category and search query
@@ -64,18 +70,29 @@ export function ExplorePage() {
   }, [activeCategory, searchQuery]);
 
   async function handleToggleSubscribe(blog: SeedBlog) {
-    const isSubscribed = subscribedUrlSet.has(blog.originalUrl);
+    const isSubscribed =
+      subscribedUrlSet.has(blog.originalUrl) ||
+      subscribedUrlSet.has(blog.originalUrl.replace(/\/$/, ''));
 
     if (isSubscribed) {
       // Find the feed id
-      const feed = subscribedFeeds.find((f) => f.url === blog.originalUrl);
+      const feed = subscribedFeeds.find(
+        (f) =>
+          f.url === blog.originalUrl ||
+          f.id === blog.originalUrl ||
+          f.url === blog.originalUrl.replace(/\/$/, '')
+      );
       if (feed) {
         await unsubscribeFeed(feed.id);
       }
     } else {
       setSubscribingUrl(blog.originalUrl);
       try {
-        await subscribeFeed(blog.originalUrl);
+        await subscribeFeed(blog.originalUrl, {
+          title: blog.title,
+          siteUrl: blog.siteUrl,
+          category: blog.category,
+        });
       } finally {
         setSubscribingUrl(null);
       }
@@ -88,15 +105,15 @@ export function ExplorePage() {
     );
     if (toSubscribe.length === 0) return;
 
-    for (const b of toSubscribe) {
-      setSubscribingUrl(b.originalUrl);
-      try {
-        await subscribeFeed(b.originalUrl);
-      } catch {
-        // continue with next
-      }
-    }
-    setSubscribingUrl(null);
+    await Promise.allSettled(
+      toSubscribe.map((b) =>
+        subscribeFeed(b.originalUrl, {
+          title: b.title,
+          siteUrl: b.siteUrl,
+          category: b.category,
+        })
+      )
+    );
   }
 
   return (

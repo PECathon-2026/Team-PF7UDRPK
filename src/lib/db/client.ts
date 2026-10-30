@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import * as schema from './schema';
 
 let dbInstance: any = null;
+let dbPromise: Promise<any> | null = null;
 let pgliteClient: PGlite | null = null;
 let cloudDbUnreachable = false;
 
@@ -52,6 +53,11 @@ export async function getDb() {
   if (dbInstance) {
     return dbInstance;
   }
+  if (dbPromise) {
+    return dbPromise;
+  }
+
+  dbPromise = (async () => {
 
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -84,7 +90,10 @@ export async function getDb() {
   }
 
   dbInstance = drizzlePglite(pgliteClient, { schema });
-  return dbInstance;
+    return dbInstance;
+  })();
+
+  return dbPromise;
 }
 
 /**

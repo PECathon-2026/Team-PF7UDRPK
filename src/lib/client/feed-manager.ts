@@ -306,32 +306,80 @@ export function normalizeFeedUrl(url: string): string {
 
 // ── Public Feed API ───────────────────────────────────────────────────────────
 
+export interface SubscribeFeedOptions {
+  title?: string;
+  siteUrl?: string | null | undefined;
+  category?: string;
+}
+
 /**
  * Subscribe to a new feed given any URL (blog homepage or direct feed URL).
- * Autodiscovers the feed URL, creates a record, and triggers an immediate sync.
+ * Immediately writes an optimistic local record (zero UI lag) and triggers background sync.
  */
-export async function subscribeFeed(inputUrl: string): Promise<LocalFeed> {
-  const feedUrl = await discoverFeedUrl(inputUrl);
-  const normalized = normalizeFeedUrl(feedUrl);
+export async function subscribeFeed(
+  inputUrl: string,
+  options?: SubscribeFeedOptions,
+): Promise<LocalFeed> {
+  const normalized = normalizeFeedUrl(inputUrl);
 
   const existing = await localDB.feeds.get(normalized);
   if (existing) {
-    // If it already exists, refresh it
-    await syncFeed(normalized);
-    return (await localDB.feeds.get(normalized))!;
+    // If it already exists, trigger refresh in background
+    syncFeed(normalized).catch((err) => console.warn(`Sync background error for ${normalized}:`, err));
+    return existing;
   }
 
+  // 1. Immediate optimistic stub in Dexie (UI updates instantly)
+  const initialTitle = options?.title || inputUrl;
   const stub: LocalFeed = {
     id: normalized,
-    url: feedUrl,
-    title: feedUrl,
+    url: inputUrl,
+    title: initialTitle,
+    siteUrl: options?.siteUrl || undefined,
     status: 'syncing',
   };
   await localDB.feeds.put(stub);
 
-  await syncFeed(normalized);
+  // 2. Background autodiscovery + sync (non-blocking for UI responsiveness)
+  (async () => {
+    try {
+      let finalFeedUrl = inputUrl;
+      const isDirectFeed =
+        /\.(xml|rss|atom)($|\?)/i.test(inputUrl) ||
+        inputUrl.includes('/atom/') ||
+        inputUrl.includes('/feed');
 
-  return (await localDB.feeds.get(normalized))!;
+      if (!isDirectFeed) {
+        try {
+          finalFeedUrl = await discoverFeedUrl(inputUrl);
+        } catch {
+          // If discovery fails, keep original inputUrl
+          finalFeedUrl = inputUrl;
+        }
+      }
+
+      const canonicalNormalized = normalizeFeedUrl(finalFeedUrl);
+
+      if (canonicalNormalized !== normalized) {
+        await localDB.feeds.delete(normalized);
+        await localDB.feeds.put({
+          ...stub,
+          id: canonicalNormalized,
+          url: finalFeedUrl,
+        });
+      }
+
+      await syncFeed(canonicalNormalized);
+    } catch (err: unknown) {
+      console.warn(`Initial sync failed for ${inputUrl}:`, err);
+      await localDB.feeds.update(normalized, {
+        status: 'error',
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
+
+  return stub;
 }
 
 /**
@@ -482,4 +530,41 @@ if (typeof window !== 'undefined') {
     console.info('[SyncManager] Network reconnected — refreshing all feeds');
     syncAllFeeds().catch(console.error);
   });
+}
+
+
+// ── OPML Import & Export ──────────────────────────────────────────────────────
+
+import { exportToOpml, parseOpml } from './opml';
+
+/**
+ * Export all current subscriptions as a standard OPML 2.0 XML string.
+ * Compatible with NetNewsWire, Feedly, Miniflux, Reeder, etc.
+ */
+export async function exportSubscriptionsToOpml(): Promise<string> {
+  const feeds = await localDB.feeds.toArray();
+  return exportToOpml(feeds);
+}
+
+/**
+ * Import a collection of feeds from an OPML 2.0 XML string.
+ * Subscribes to each discovered xmlUrl and starts synchronization.
+ */
+export async function importSubscriptionsFromOpml(
+  rawXml: string,
+): Promise<{ total: number; succeeded: number; failed: number }> {
+  const { feedUrls } = parseOpml(rawXml);
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const url of feedUrls) {
+    try {
+      await subscribeFeed(url);
+      succeeded++;
+    } catch {
+      failed++;
+    }
+  }
+
+  return { total: feedUrls.length, succeeded, failed };
 }

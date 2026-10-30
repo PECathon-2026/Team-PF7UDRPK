@@ -216,6 +216,13 @@ export function isAddressForbidden(ipString: string): boolean {
     if (v6.isIPv4MappedAddress()) {
       return isAddressForbidden(v6.toIPv4Address().toString());
     }
+    // Unwrap RFC 6052 / NAT64 well-known prefix (64:ff9b::/96)
+    if (v6.range() === 'rfc6052') {
+      const p6 = v6.parts[6];
+      const p7 = v6.parts[7];
+      const v4String = `${p6 >> 8}.${p6 & 0xff}.${p7 >> 8}.${p7 & 0xff}`;
+      return isAddressForbidden(v4String);
+    }
   }
 
   const range = addr.range();
@@ -239,8 +246,7 @@ export function isAddressForbidden(ipString: string): boolean {
     'uniqueLocal',        // fc00::/7
     'ipv4Mapped',         // ::ffff:0:0/96 (belt-and-suspenders; also unwrapped above)
     'rfc6145',            // ::ffff:0:0:0/96  (IPv4-translated)
-    'rfc6052',            // 64:ff9b::/96    (NAT64)
-    'teredo',             // 2001::/32
+        'teredo',             // 2001::/32
     '6to4',               // 2002::/16
     // multicast is shared name across both protocol versions
   ]);
