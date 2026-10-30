@@ -172,6 +172,7 @@ export const uiStore = {
     uiStore.setState({
       selectedFilter: filter,
       view: 'timeline',
+      activePostId: null,
       isMobileDrawerOpen: false,
     });
   },

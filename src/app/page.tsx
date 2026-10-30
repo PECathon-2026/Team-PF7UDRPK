@@ -214,7 +214,7 @@ export default function HomePage() {
                   ? 'hidden'
                   : activePostId
                   ? 'hidden md:block'
-                  : 'w-full md:block'
+                  : 'w-full md:w-auto md:block'
               }`}
             >
               <div

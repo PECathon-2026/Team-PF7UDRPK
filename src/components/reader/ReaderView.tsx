@@ -144,8 +144,8 @@ export function ReaderView() {
     full: 'max-w-5xl',
   }[readingWidth];
 
-  // If no article is selected
-  if (!activePostId || !post) {
+  // If no article is selected -> Steady constant interactive empty state with 67913.png
+  if (!activePostId) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center p-6 sm:p-10 text-center bg-reader-surface select-none overflow-y-auto transition-colors">
         <div className="w-full max-w-md flex flex-col items-center justify-center animate-in fade-in duration-300">
@@ -193,6 +193,15 @@ export function ReaderView() {
             </span>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // If an article is selected but still loading metadata from localDB
+  if (!post) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-reader-surface">
+        <Loader2 className="w-6 h-6 animate-spin text-reader-accent" />
       </div>
     );
   }

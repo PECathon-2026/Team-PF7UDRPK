@@ -40,6 +40,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 export function Timeline() {
+  const listRef = React.useRef<HTMLDivElement>(null);
   const selectedFilter = useUIStore((s) => s.selectedFilter);
   const timelineSubFilter = useUIStore((s) => s.timelineSubFilter);
   const activePostId = useUIStore((s) => s.activePostId);
@@ -113,6 +114,13 @@ export function Timeline() {
   }, [filteredPosts, visibleCount]);
 
   const hasMore = visibleCount < filteredPosts.length;
+
+  // Lock scrolling when no article is selected (empty state image is shown)
+  React.useEffect(() => {
+    if (!activePostId && listRef.current) {
+      listRef.current.scrollTop = 0;
+    }
+  }, [activePostId]);
 
   async function handleSelectPost(post: LocalPost) {
     uiStore.setActivePostId(post.id);
@@ -223,7 +231,12 @@ export function Timeline() {
       </div>
 
       {/* ── Article Rows List (Windowed) ────────────────────── */}
-      <div className="flex-1 overflow-y-auto divide-y divide-reader-borderMuted">
+      <div
+        ref={listRef}
+        onWheel={!activePostId ? (e) => e.preventDefault() : undefined}
+        className={`flex-1 divide-y divide-reader-borderMuted ${
+          activePostId ? 'overflow-y-auto' : 'overflow-hidden overscroll-none'
+        }`}>
         {visiblePosts.length === 0 ? (
           <div className="p-8 text-center space-y-3">
             <div className="w-10 h-10 rounded-full bg-reader-surface border border-reader-border flex items-center justify-center mx-auto text-reader-dim shadow-sm">
