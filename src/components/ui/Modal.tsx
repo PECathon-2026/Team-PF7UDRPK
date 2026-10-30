@@ -57,35 +57,35 @@ export function Modal({
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className={`w-full ${maxWidthClass} bg-reader-surface border border-reader-border rounded-xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in-95 duration-150`}
+        className={`w-full ${maxWidthClass} max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-reader-surface border border-reader-border rounded-xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in-95 duration-150`}
       >
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-reader-borderMuted">
-          <div>
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-reader-borderMuted shrink-0">
+          <div className="min-w-0 flex-1">
             {title && (
-              <h2 className="text-lg font-semibold text-reader-text tracking-tight">
+              <h2 className="text-base sm:text-lg font-semibold text-reader-text tracking-tight leading-snug">
                 {title}
               </h2>
             )}
             {description && (
-              <p className="text-xs text-reader-muted mt-0.5">
+              <p className="text-xs text-reader-muted mt-0.5 leading-relaxed">
                 {description}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors"
+            className="p-1.5 -mr-1 -mt-0.5 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors shrink-0"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

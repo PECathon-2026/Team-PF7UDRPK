@@ -253,62 +253,67 @@ export default function HomePage() {
       )}
 
       {/* ── Mobile Bottom Navigation Bar ─────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-14 bg-reader-surface/95 backdrop-blur-md border-t border-reader-border flex items-center justify-around px-2 z-40 transition-colors">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-reader-surface/95 backdrop-blur-md border-t border-reader-border grid grid-cols-5 z-40 transition-colors pb-[env(safe-area-inset-bottom,0px)] shadow-lg select-none">
         <button
+          type="button"
           onClick={() => {
             uiStore.setView('timeline');
             uiStore.setSelectedFilter('all');
           }}
-          className={`flex flex-col items-center justify-center p-1 text-[10px] font-medium transition-colors ${
+          className={`flex flex-col items-center justify-center py-1.5 px-1 text-[11px] font-medium transition-colors touch-manipulation min-h-[52px] ${
             view === 'timeline'
               ? 'text-reader-accent font-semibold'
-              : 'text-reader-dim hover:text-reader-muted'
+              : 'text-reader-dim hover:text-reader-muted active:text-reader-text'
           }`}
         >
-          <Inbox className="w-5 h-5 mb-0.5" />
-          <span>Articles</span>
+          <Inbox className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="truncate">Articles</span>
         </button>
 
         <button
+          type="button"
           onClick={() => uiStore.setView('explore')}
-          className={`flex flex-col items-center justify-center p-1 text-[10px] font-medium transition-colors ${
+          className={`flex flex-col items-center justify-center py-1.5 px-1 text-[11px] font-medium transition-colors touch-manipulation min-h-[52px] ${
             view === 'explore'
               ? 'text-reader-accent font-semibold'
-              : 'text-reader-dim hover:text-reader-muted'
+              : 'text-reader-dim hover:text-reader-muted active:text-reader-text'
           }`}
         >
-          <Compass className="w-5 h-5 mb-0.5" />
-          <span>Explore</span>
+          <Compass className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="truncate">Explore</span>
         </button>
 
         <button
+          type="button"
           onClick={() => uiStore.setAddFeedOpen(true)}
-          className="flex flex-col items-center justify-center p-1 text-[10px] font-medium text-reader-dim hover:text-reader-muted"
+          className="flex flex-col items-center justify-center py-1 px-1 text-[11px] font-medium text-reader-dim hover:text-reader-muted active:text-reader-text touch-manipulation min-h-[52px]"
         >
-          <div className="w-8 h-8 rounded-full bg-reader-accent text-reader-bg flex items-center justify-center -mt-3 shadow-md active:scale-95 transition-transform">
-            <Plus className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-full bg-reader-accent text-reader-bg flex items-center justify-center -mt-2.5 shadow-md active:scale-90 transition-transform shrink-0">
+            <Plus className="w-4 h-4 stroke-[2.5]" />
           </div>
-          <span>Add</span>
+          <span className="mt-0.5 truncate">Add</span>
         </button>
 
         <button
+          type="button"
           onClick={() => uiStore.setView('discover')}
-          className={`flex flex-col items-center justify-center p-1 text-[10px] font-medium transition-colors ${
+          className={`flex flex-col items-center justify-center py-1.5 px-1 text-[11px] font-medium transition-colors touch-manipulation min-h-[52px] ${
             view === 'discover'
               ? 'text-reader-accent font-semibold'
-              : 'text-reader-dim hover:text-reader-muted'
+              : 'text-reader-dim hover:text-reader-muted active:text-reader-text'
           }`}
         >
-          <Sparkles className="w-5 h-5 mb-0.5" />
-          <span>Discover</span>
+          <Sparkles className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="truncate">Discover</span>
         </button>
 
         <button
+          type="button"
           onClick={() => uiStore.setSettingsOpen(true)}
-          className="flex flex-col items-center justify-center p-1 text-[10px] font-medium text-reader-dim hover:text-reader-muted"
+          className="flex flex-col items-center justify-center py-1.5 px-1 text-[11px] font-medium text-reader-dim hover:text-reader-muted active:text-reader-text touch-manipulation min-h-[52px]"
         >
-          <Settings className="w-5 h-5 mb-0.5" />
-          <span>Settings</span>
+          <Settings className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="truncate">Settings</span>
         </button>
       </nav>
 

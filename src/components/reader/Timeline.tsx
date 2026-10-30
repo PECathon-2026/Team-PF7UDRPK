@@ -223,7 +223,7 @@ export function Timeline() {
       </div>
 
       {/* ── Article Rows List (Windowed) ────────────────────── */}
-      <div className="flex-1 overflow-y-auto divide-y divide-reader-borderMuted">
+      <div className="flex-1 overflow-y-auto divide-y divide-reader-borderMuted pb-24 sm:pb-4">
         {visiblePosts.length === 0 ? (
           <div className="p-8 text-center space-y-3">
             <div className="w-10 h-10 rounded-full bg-reader-surface border border-reader-border flex items-center justify-center mx-auto text-reader-dim shadow-sm">
@@ -298,7 +298,7 @@ export function Timeline() {
                       {/* FIXED: Star button with pop animation and feedback */}
                       <button
                         onClick={(e) => handleToggleStar(e, post.id)}
-                        className={`p-1 rounded-md transition-all active:scale-75 ${
+                        className={`p-1.5 sm:p-1 rounded-md transition-all touch-manipulation active:scale-75 ${
                           post.isStarred
                             ? 'text-amber-500 hover:text-amber-600'
                             : 'text-reader-dim hover:text-reader-text'

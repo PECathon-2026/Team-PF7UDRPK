@@ -102,40 +102,40 @@ export function ExplorePage() {
   return (
     <div className="w-full h-full flex flex-col bg-reader-bg overflow-y-auto">
       {/* ── Page Header ─────────────────────────────────────── */}
-      <div className="p-6 sm:p-10 border-b border-reader-border bg-reader-surface/50 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <div className="p-4 sm:p-10 border-b border-reader-border bg-reader-surface/50 backdrop-blur-sm">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+          <div className="flex items-center justify-between gap-2.5 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               {/* Mobile menu button */}
               <button
                 onClick={() => uiStore.setMobileDrawerOpen(true)}
-                className="lg:hidden p-1.5 -ml-1 text-reader-muted hover:text-reader-text rounded-md"
+                className="lg:hidden p-2 -ml-1 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors shrink-0"
                 aria-label="Open navigation menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
 
-              <div className="w-10 h-10 rounded-xl bg-reader-accentBg border border-reader-accent/20 flex items-center justify-center text-reader-accent">
-                <Compass className="w-5 h-5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-reader-accentBg border border-reader-accent/20 flex items-center justify-center text-reader-accent shrink-0">
+                <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-reader-text tracking-tight">
-                  Explore the Small Web
-                </h1>
-                <p className="text-xs sm:text-sm text-reader-muted mt-0.5">
-                  Curated directory of independent engineering blogs, artisanal weblogs, and computer architecture essays.
-                </p>
-              </div>
+
+              <h1 className="text-lg sm:text-2xl font-bold text-reader-text tracking-tight truncate sm:whitespace-normal">
+                Explore the Small Web
+              </h1>
             </div>
 
             <button
               onClick={() => uiStore.setAddFeedOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-reader-selected hover:bg-reader-surfaceHover text-reader-accent border border-reader-border rounded-lg transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-reader-selected hover:bg-reader-surfaceHover text-reader-accent border border-reader-border rounded-lg transition-colors shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Custom URL</span>
             </button>
           </div>
+
+          <p className="text-xs sm:text-sm text-reader-muted leading-relaxed sm:pl-[52px]">
+            Curated directory of independent engineering blogs, artisanal weblogs, and computer architecture essays.
+          </p>
 
           {/* Search Input */}
           <div className="relative">
@@ -150,13 +150,13 @@ export function ExplorePage() {
           </div>
 
           {/* Category Tabs */}
-          <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 -mx-1 px-1 sm:mx-0 sm:px-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors touch-manipulation active:scale-95 ${
                     activeCategory === cat.id
                       ? 'bg-reader-selected text-reader-accent font-semibold border border-reader-accent/30 shadow-sm'
                       : 'bg-reader-surface/80 text-reader-muted hover:text-reader-text hover:bg-reader-selected/40 border border-reader-border'
@@ -169,7 +169,7 @@ export function ExplorePage() {
 
             <button
               onClick={handleSubscribeAllVisible}
-              className="text-xs text-reader-accent hover:text-reader-accentHover font-semibold whitespace-nowrap flex items-center gap-1 px-2 py-1"
+              className="text-xs text-reader-accent hover:text-reader-accentHover font-semibold whitespace-nowrap flex items-center gap-1 px-2 py-1 shrink-0"
             >
               <span>Follow all ({filteredBlogs.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -179,7 +179,7 @@ export function ExplorePage() {
       </div>
 
       {/* ── Directory Feed Cards Grid ───────────────────────── */}
-      <div className="flex-1 p-6 sm:p-10 max-w-4xl mx-auto w-full">
+      <div className="flex-1 p-4 sm:p-10 max-w-4xl mx-auto w-full pb-24 sm:pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredBlogs.map((blog) => {
             const isSubscribed = subscribedUrlSet.has(blog.originalUrl);

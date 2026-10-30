@@ -126,7 +126,7 @@ export function AddFeedModal() {
                   setUrl(item.url);
                   handleSubscribe(item.url);
                 }}
-                className="px-2.5 py-1 text-xs bg-reader-selected hover:bg-reader-surfaceHover text-reader-text border border-reader-border rounded-md transition-colors disabled:opacity-50 flex items-center gap-1"
+                className="px-2.5 py-1.5 sm:py-1 text-xs bg-reader-selected hover:bg-reader-surfaceHover text-reader-text border border-reader-border rounded-md transition-colors disabled:opacity-50 flex items-center gap-1 touch-manipulation active:scale-95"
               >
                 <span>{item.name}</span>
               </button>
@@ -139,14 +139,14 @@ export function AddFeedModal() {
             type="button"
             disabled={isLoading}
             onClick={handleClose}
-            className="px-4 py-2 text-xs font-medium text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors"
+            className="px-4 py-2.5 sm:py-2 text-xs font-medium text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors touch-manipulation min-h-[40px] sm:min-h-0"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading || !url.trim()}
-            className="px-4 py-2 text-xs font-medium text-reader-bg bg-reader-accent hover:bg-reader-accentHover disabled:opacity-50 rounded-lg transition-colors font-semibold flex items-center gap-2 shadow-sm"
+            className="px-4 py-2.5 sm:py-2 text-xs font-semibold text-reader-bg bg-reader-accent hover:bg-reader-accentHover disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2 shadow-sm touch-manipulation min-h-[40px] sm:min-h-0 active:scale-95"
           >
             {isLoading ? (
               <>

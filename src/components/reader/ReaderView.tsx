@@ -341,7 +341,7 @@ export function ReaderView() {
       </div>
 
       {/* ── Article Content Area (Scrollable & Width Configurable) ─ */}
-      <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-12 lg:px-16">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:py-8 sm:px-12 lg:px-16 pb-28 sm:pb-8">
         <div className={`${widthClass} mx-auto space-y-6 transition-all duration-150`}>
           {/* Article Header */}
           <header className="space-y-4 pb-6 border-b border-reader-border">

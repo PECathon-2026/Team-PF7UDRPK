@@ -187,6 +187,7 @@ export function Sidebar() {
             onClick={() => {
               uiStore.setSelectedFilter('all');
               uiStore.setView('timeline');
+              uiStore.setMobileDrawerOpen(false);
             }}
             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               currentView === 'timeline' && selectedFilter === 'all'
@@ -207,6 +208,7 @@ export function Sidebar() {
             onClick={() => {
               uiStore.setSelectedFilter('unread');
               uiStore.setView('timeline');
+              uiStore.setMobileDrawerOpen(false);
             }}
             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               currentView === 'timeline' && selectedFilter === 'unread'
@@ -228,6 +230,7 @@ export function Sidebar() {
             onClick={() => {
               uiStore.setSelectedFilter('starred');
               uiStore.setView('timeline');
+              uiStore.setMobileDrawerOpen(false);
             }}
             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               currentView === 'timeline' && selectedFilter === 'starred'
@@ -252,7 +255,10 @@ export function Sidebar() {
           </div>
           <div className="space-y-0.5">
             <button
-              onClick={() => uiStore.setView('explore')}
+              onClick={() => {
+                uiStore.setView('explore');
+                uiStore.setMobileDrawerOpen(false);
+              }}
               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 currentView === 'explore'
                   ? 'bg-reader-selected text-reader-accent font-semibold shadow-sm'
@@ -267,7 +273,10 @@ export function Sidebar() {
             </button>
 
             <button
-              onClick={() => uiStore.setView('discover')}
+              onClick={() => {
+                uiStore.setView('discover');
+                uiStore.setMobileDrawerOpen(false);
+              }}
               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 currentView === 'discover'
                   ? 'bg-reader-selected text-reader-accent font-semibold shadow-sm'
@@ -323,6 +332,7 @@ export function Sidebar() {
                     onClick={() => {
                       uiStore.setSelectedFilter(feed.id);
                       uiStore.setView('timeline');
+                      uiStore.setMobileDrawerOpen(false);
                     }}
                     className={`group relative w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                       isSelected

@@ -127,51 +127,66 @@ export function DiscoverPage() {
   return (
     <div className="w-full h-full flex flex-col bg-reader-bg overflow-y-auto">
       {/* ── Page Header ─────────────────────────────────────── */}
-      <div className="p-6 sm:p-10 border-b border-reader-border bg-reader-surface/50 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <div className="p-4 sm:p-10 border-b border-reader-border bg-reader-surface/50 backdrop-blur-sm">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+          {/* Header Row: Hamburger (mobile), Icon + Heading, Refresh */}
+          <div className="flex items-center justify-between gap-2.5 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               {/* Mobile menu button */}
               <button
                 onClick={() => uiStore.setMobileDrawerOpen(true)}
-                className="lg:hidden p-1.5 -ml-1 text-reader-muted hover:text-reader-text rounded-md"
+                className="lg:hidden p-2 -ml-1 text-reader-muted hover:text-reader-text hover:bg-reader-selected rounded-lg transition-colors shrink-0"
                 aria-label="Open navigation menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
 
-              <div className="w-10 h-10 rounded-xl bg-reader-accentBg border border-reader-accent/20 flex items-center justify-center text-reader-accent">
-                <Sparkles className="w-5 h-5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-reader-accentBg border border-reader-accent/20 flex items-center justify-center text-reader-accent shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-reader-text tracking-tight">
-                  ✨ Discover Small Web Blogs
-                </h1>
-                <p className="text-xs sm:text-sm text-reader-muted mt-0.5">
-                  Serendipitous co-subscription discovery with zero trackers or invasive profiling.
-                </p>
-              </div>
+
+              <h1 className="text-lg sm:text-2xl font-bold text-reader-text tracking-tight truncate sm:whitespace-normal">
+                Discover Small Web Blogs
+              </h1>
             </div>
 
             <button
               onClick={fetchRecommendations}
               disabled={isLoading || isOffline}
-              className="p-2 text-reader-muted hover:text-reader-text hover:bg-reader-selected border border-reader-border rounded-lg transition-colors disabled:opacity-40"
+              className="p-2 text-reader-muted hover:text-reader-text hover:bg-reader-selected border border-reader-border rounded-lg transition-colors disabled:opacity-40 shrink-0 touch-manipulation active:scale-95"
               title="Refresh recommendations"
+              aria-label="Refresh recommendations"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-reader-accent' : ''}`} />
             </button>
           </div>
 
+          {/* Description directly below the heading */}
+          <p className="text-xs sm:text-sm text-reader-muted leading-relaxed sm:pl-[52px]">
+            Community-powered co-subscription discovery with zero trackers or invasive profiling.
+          </p>
+
           {/* Privacy Opt-in Card */}
-          <div className="p-4 bg-reader-surface border border-reader-border rounded-xl space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-semibold text-reader-text">
-                    Privacy-Preserving Co-Subscription Opt-in
-                  </span>
+          <div className="p-3.5 sm:p-4 bg-reader-surface border border-reader-border rounded-xl space-y-2.5 sm:space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center justify-between sm:justify-start gap-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold text-reader-text">
+                      Privacy-Preserving Co-Subscription Opt-in
+                    </span>
+                  </div>
+                  {/* Mobile-only toggle on title line */}
+                  <label className="sm:hidden relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={anonymousSharing}
+                      onChange={(e) => handleToggleAnonymousSharing(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-reader-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-reader-accent"></div>
+                  </label>
                 </div>
                 <p className="text-xs text-reader-muted leading-relaxed">
                   Share anonymous subscription URLs to improve recommendations for everyone.
@@ -179,8 +194,8 @@ export function DiscoverPage() {
                 </p>
               </div>
 
-              {/* Opt-in toggle switch */}
-              <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+              {/* Desktop toggle switch */}
+              <label className="hidden sm:inline-flex relative items-center cursor-pointer shrink-0 mt-0.5">
                 <input
                   type="checkbox"
                   checked={anonymousSharing}
@@ -201,19 +216,43 @@ export function DiscoverPage() {
       </div>
 
       {/* ── Recommendations Content ─────────────────────────── */}
-      <div className="flex-1 p-6 sm:p-10 max-w-4xl mx-auto w-full space-y-10">
+      <div className="flex-1 p-4 sm:p-10 max-w-4xl mx-auto w-full space-y-8 sm:space-y-10 pb-24 sm:pb-10">
         {/* Error State */}
         {error && (
-          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300">
-            {error}
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button
+              onClick={fetchRecommendations}
+              className="px-2.5 py-1 text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-md transition-colors shrink-0"
+            >
+              Retry
+            </button>
           </div>
         )}
 
         {/* Loading State */}
         {isLoading && !data && (
-          <div className="p-12 text-center space-y-3">
+          <div className="p-8 sm:p-12 text-center space-y-3">
             <Loader2 className="w-6 h-6 animate-spin text-reader-accent mx-auto" />
-            <p className="text-xs text-reader-muted">Computing co-reading graphs and serendipity shelf...</p>
+            <p className="text-xs text-reader-muted">Computing co-reading graphs and discovery picks...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && data && data.recommendations.length === 0 && (!data.serendipityPicks || data.serendipityPicks.length === 0) && (
+          <div className="p-8 sm:p-12 text-center space-y-3 bg-reader-surface border border-reader-border rounded-xl">
+            <Compass className="w-8 h-8 text-reader-dim mx-auto" />
+            <h3 className="text-sm font-semibold text-reader-text">No recommendations found yet</h3>
+            <p className="text-xs text-reader-muted max-w-sm mx-auto leading-relaxed">
+              Subscribe to more feeds or contribute to the anonymous co-subscription graph to generate personalized small-web picks.
+            </p>
+            <button
+              onClick={fetchRecommendations}
+              className="px-3.5 py-1.5 text-xs font-semibold bg-reader-selected hover:bg-reader-surfaceHover text-reader-accent border border-reader-border rounded-lg transition-colors inline-flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh Discovery</span>
+            </button>
           </div>
         )}
 
@@ -223,8 +262,8 @@ export function DiscoverPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shuffle className="w-4 h-4 text-reader-accent" />
-                <h2 className="text-sm font-semibold text-reader-text tracking-tight uppercase tracking-wider text-[11px]">
-                  ✨ Step Outside Your Bubble
+                <h2 className="text-sm font-semibold text-reader-text uppercase tracking-wider text-[11px]">
+                  Step Outside Your Bubble
                 </h2>
                 <Badge variant="accent" size="sm">
                   10–15% Serendipity Shelf
@@ -281,7 +320,7 @@ export function DiscoverPage() {
                       <button
                         onClick={() => handleFollow(pick.originalUrl)}
                         disabled={isSubscribed || isCurrentlySubscribing}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 ${
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1 touch-manipulation min-h-[34px] sm:min-h-0 active:scale-95 ${
                           isSubscribed
                             ? 'bg-reader-selected text-emerald-400'
                             : 'bg-reader-accent text-reader-bg hover:bg-reader-accentHover'
@@ -370,7 +409,7 @@ export function DiscoverPage() {
                       <button
                         onClick={() => handleFollow(rec.originalUrl)}
                         disabled={isSubscribed || isCurrentlySubscribing}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 touch-manipulation min-h-[36px] sm:min-h-0 active:scale-95 ${
                           isSubscribed
                             ? 'bg-reader-selected text-emerald-400'
                             : 'bg-reader-accent text-reader-bg hover:bg-reader-accentHover'
