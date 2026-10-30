@@ -21,7 +21,7 @@
  */
 
 import { localDB, LocalFeed, LocalPost, CachedArticle } from './db';
-import { safeFetchThroughProxy } from './proxy';
+import { safeFetchThroughProxy, safeFetchWithMeta } from './proxy';
 import { discoverFeedUrl } from './autodiscovery';
 import { extractTopics } from './tfidf';
 import { XMLParser } from 'fast-xml-parser';
@@ -394,14 +394,29 @@ export async function syncFeed(feedId: string): Promise<void> {
   await localDB.feeds.update(feedId, { status: 'syncing', errorMessage: undefined });
 
   try {
-    const rawXml = await safeFetchThroughProxy(feed.url);
-    const { title, posts, topics } = await parseFeedInWorker(rawXml, feedId);
+    const fetchRes = await safeFetchWithMeta(feed.url, {
+      etag: feed.etag,
+      lastModified: feed.lastModified,
+    });
+
+    if (fetchRes.isNotModified) {
+      await localDB.feeds.update(feedId, {
+        status: 'active',
+        lastFetchedAt: Date.now(),
+        errorMessage: undefined,
+      });
+      return;
+    }
+
+    const { title, posts, topics } = await parseFeedInWorker(fetchRes.text, feedId);
 
     await localDB.feeds.update(feedId, {
       title,
       topics,
       status: 'active',
       lastFetchedAt: Date.now(),
+      etag: fetchRes.etag ?? feed.etag,
+      lastModified: fetchRes.lastModified ?? feed.lastModified,
       errorMessage: undefined,
     });
 
@@ -523,13 +538,22 @@ export async function getTopSubscribedTopics(): Promise<string[]> {
     .map(([term]) => term);
 }
 
-// ── Sync Manager — Auto-refresh on Network Reconnect ─────────────────────────
+// ── Sync Manager — Auto-refresh on Network Reconnect & Periodic Background Sync ─
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     console.info('[SyncManager] Network reconnected — refreshing all feeds');
     syncAllFeeds().catch(console.error);
   });
+
+  // Periodic 15-minute background sync when user is active and online
+  const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+  setInterval(() => {
+    if (navigator.onLine && document.visibilityState === 'visible') {
+      console.info('[SyncManager] 15-minute background sync triggered');
+      syncAllFeeds().catch(console.error);
+    }
+  }, FIFTEEN_MINUTES_MS);
 }
 
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/client';
 import { submitAnonymousBatch, seedInitialFeeds } from '@/lib/discovery/engine';
+import { validateSubmissionIntegrity } from '@/lib/server/security-helpers';
+import { checkRateLimitBySaltedIp, extractClientIp } from '@/lib/server/rate-limiter';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,11 +15,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Optional Proof of Work verification hook (Member C's contract)
-    // If Member C's verifyPoWChallenge is available, it can validate here
+    // ── Enforce Proof of Work & IP Rate-Limiting ────────────────────────────
     if (body.powSolution) {
-      // Plug-and-play hook for Member C's PoW validation
-      console.log('PoW solution received:', body.powSolution);
+      const security = await validateSubmissionIntegrity(req, body.powSolution);
+      if (!security.ok) {
+        return NextResponse.json(
+          { error: security.message, code: security.code },
+          { status: security.httpStatus }
+        );
+      }
+    } else {
+      // Enforce privacy-preserving salted IP rate limiting on all batch submissions
+      const clientIp = extractClientIp(req);
+      const isAllowed = checkRateLimitBySaltedIp(clientIp);
+      if (!isAllowed) {
+        return NextResponse.json(
+          {
+            error: 'Rate limit exceeded: maximum 10 submissions per hour per IP.',
+            code: 'RATE_LIMITED',
+          },
+          { status: 429 }
+        );
+      }
     }
 
     const db = await getDb();
@@ -31,6 +50,7 @@ export async function POST(req: NextRequest) {
         batchId: result.batchId,
         processedFeedsCount: result.count,
         message: 'Anonymous subscription batch recorded successfully',
+        isDownweighted: result.isDownweighted ?? false,
       },
       { status: 201 }
     );
@@ -42,4 +62,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

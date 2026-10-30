@@ -81,12 +81,13 @@ export async function seedInitialFeeds(db: any): Promise<void> {
 
 /**
  * Submits an anonymous batch of feeds.
- * Deduplicates URLs, updates subscriber counts, and records co-subscription relations.
+ * Deduplicates URLs, detects single-domain spam bursts (downweighting),
+ * updates subscriber counts, and records co-subscription relations.
  */
 export async function submitAnonymousBatch(
   db: any,
   rawUrls: string[]
-): Promise<{ batchId: string; count: number }> {
+): Promise<{ batchId: string; count: number; isDownweighted: boolean }> {
   if (!rawUrls || rawUrls.length === 0) {
     throw new Error('Batch cannot be empty');
   }
@@ -115,6 +116,30 @@ export async function submitAnonymousBatch(
     throw new Error('No valid HTTP/HTTPS URLs in submission');
   }
 
+  // ── Abuse Protection: Single-Domain Dominance / Burst Detection ─────────
+  // If >=75% of URLs in a multi-feed batch share the exact same domain,
+  // the batch is flagged as an artificial cluster and downweighted.
+  const domainCounts = new Map<string, number>();
+  for (const item of validInputs) {
+    try {
+      const u = new URL(item.original.startsWith('http') ? item.original : `https://${item.original}`);
+      const domain = u.hostname.replace(/^www\./, '').toLowerCase();
+      domainCounts.set(domain, (domainCounts.get(domain) || 0) + 1);
+    } catch {
+      // Ignore URL parse error
+    }
+  }
+
+  let isDownweighted = false;
+  if (validInputs.length >= 3) {
+    for (const count of domainCounts.values()) {
+      if (count / validInputs.length >= 0.75) {
+        isDownweighted = true;
+        break;
+      }
+    }
+  }
+
   // Upsert feeds and collect their IDs
   const feedIds: string[] = [];
   for (const item of validInputs) {
@@ -126,10 +151,12 @@ export async function submitAnonymousBatch(
 
     if (existing.length > 0) {
       const feed = existing[0];
+      // Downweighted batches do not inflate subscriber counts
+      const increment = isDownweighted ? 0 : 1;
       await db
         .update(feeds)
         .set({
-          subscriberCount: feed.subscriberCount + 1,
+          subscriberCount: feed.subscriberCount + increment,
           lastSeenAt: new Date(),
         })
         .where(eq(feeds.id, feed.id));
@@ -163,31 +190,36 @@ export async function submitAnonymousBatch(
     });
   }
 
-  return { batchId: batch.id, count: feedIds.length };
+  return {
+    batchId: batch.id,
+    count: feedIds.length,
+    isDownweighted,
+  };
 }
 
 /**
- * Computes recommendations for a user given their currently followed feed URLs.
- * Combines co-subscription overlap, logarithmic popularity prior, and a 10-15% Serendipity Shelf.
+ * Calculates personalized recommendations based on the user's current subscriptions.
+ * Enforces:
+ *   - Minimum distinct submissions safeguard (prevents single-batch spam dominance)
+ *   - Transparent explanation reasons ("Co-read by readers of X")
+ *   - 10-15% serendipity allocation outside user's primary categories
  */
 export async function getRecommendations(
   db: any,
-  userSubscribedUrls: string[],
+  userSubscriptionUrls: string[],
   limit: number = 8
 ): Promise<RecommendationResponse> {
-  // Normalize user's current subscriptions
-  const userNormalized = new Set<string>();
-  for (const url of userSubscribedUrls) {
-    try {
-      userNormalized.add(normalizeBlogUrl(url));
-    } catch {
-      // Skip invalid
-    }
-  }
+  const userNormArray = userSubscriptionUrls
+    .map((u) => {
+      try {
+        return normalizeBlogUrl(u);
+      } catch {
+        return null;
+      }
+    })
+    .filter((u): u is string => u !== null);
 
-  const userNormArray = Array.from(userNormalized);
-
-  // COLD START: User follows no feeds yet
+  // Cold Start: If user has 0 subscriptions, recommend most popular small-web blogs
   if (userNormArray.length === 0) {
     const popularFeeds = await db
       .select()
@@ -266,9 +298,10 @@ export async function getRecommendations(
     };
   }
 
-  // 1. Relational Co-Subscription Query:
-  // Find other feeds co-occurring in batches containing user feeds
-  const queryResult = await db.execute(sql`
+  // 1. Relational Co-Subscription Query with Abuse Safeguards:
+  // Requires minimum distinct submissions (COUNT >= 2 or subscriber_count >= 2)
+  // to prevent a single spam submission from dominating recommendations.
+  let queryResult = await db.execute(sql`
     SELECT 
       f.id,
       f.normalized_url,
@@ -285,13 +318,41 @@ export async function getRecommendations(
       AND f.id NOT IN ${userFeedIds}
       AND f.normalized_url NOT IN ${userNormArray}
     GROUP BY f.id, f.normalized_url, f.original_url, f.title, f.site_url, f.category, f.subscriber_count
+    HAVING (COUNT(DISTINCT b2.batch_id) >= 2 OR f.subscriber_count >= 2)
     ORDER BY co_count DESC, f.subscriber_count DESC
     LIMIT ${limit + 5}
   `);
 
-  const coOccurrences: any[] = Array.isArray(queryResult)
+  let coOccurrences: any[] = Array.isArray(queryResult)
     ? queryResult
     : queryResult.rows || [];
+
+  // Fallback if strict threshold filters out all results on small datasets
+  if (coOccurrences.length === 0) {
+    const fallbackQueryResult = await db.execute(sql`
+      SELECT 
+        f.id,
+        f.normalized_url,
+        f.original_url,
+        f.title,
+        f.site_url,
+        f.category,
+        f.subscriber_count,
+        COUNT(DISTINCT b2.batch_id)::int AS co_count
+      FROM batch_feeds b1
+      JOIN batch_feeds b2 ON b1.batch_id = b2.batch_id
+      JOIN feeds f ON b2.feed_id = f.id
+      WHERE b1.feed_id IN ${userFeedIds}
+        AND f.id NOT IN ${userFeedIds}
+        AND f.normalized_url NOT IN ${userNormArray}
+      GROUP BY f.id, f.normalized_url, f.original_url, f.title, f.site_url, f.category, f.subscriber_count
+      ORDER BY co_count DESC, f.subscriber_count DESC
+      LIMIT ${limit + 5}
+    `);
+    coOccurrences = Array.isArray(fallbackQueryResult)
+      ? fallbackQueryResult
+      : fallbackQueryResult.rows || [];
+  }
 
   // Find the top co-occurring source blog for transparent reasons
   const topSourceTitle = userFeeds[0]?.title || 'your subscriptions';

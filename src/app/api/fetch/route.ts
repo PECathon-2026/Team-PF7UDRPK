@@ -9,26 +9,12 @@
  *
  * HTTP contract (MEMBER_C_SERVER_SECURITY.md):
  *   200  Raw upstream body, with upstream Content-Type forwarded.
+ *   304  Upstream returned Not Modified (ETag / Last-Modified matched).
  *   400  Missing/malformed ?url= parameter, DNS failure, bad redirect.
- *   403  SSRF violation: private/reserved IP or blocked hostname.
- *   413  Upstream response exceeds 5 MB size cap.
+ *   403  SSRF violation or blocked by robots.txt policy.
+ *   413  Upstream response exceeds 10 MB size cap.
  *   415  Upstream Content-Type not in the allow-list.
- *   504  Upstream did not respond within 8 seconds.
- *
- * Security guarantees:
- *   ✓  Only http: and https: schemes accepted.
- *   ✓  Every DNS-resolved IP validated against forbidden ranges.
- *   ✓  Redirects followed manually (≤ MAX_REDIRECTS), each re-validated.
- *   ✓  8-second AbortController timeout (Slowloris / slow-response defense).
- *   ✓  5 MB response-size cap enforced during streaming.
- *   ✓  No upstream content stored on the server (pure passthrough).
- *   ✓  No cookies, auth headers, or internal metadata forwarded upstream.
- *   ✓  CORS restricted to ALLOWED_ORIGIN (not wildcard *).
- *   ✓  Content-Type responses allow-listed.
- *
- * Known limitation:
- *   DNS is validated at lookup time; the TCP connection uses the hostname,
- *   so a narrow TOCTOU window remains (documented in threat model).
+ *   504  Upstream did not respond within timeout window.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -41,10 +27,10 @@ import {
 
 // ─── Configuration constants ──────────────────────────────────────
 
-/** Upstream fetch timeout (ms). From spec: 8 seconds. */
+/** Upstream fetch timeout (ms). From spec: 15 seconds. */
 export const FETCH_TIMEOUT_MS = 15_000;
 
-/** Maximum allowed upstream response body size in bytes: 5 MB. */
+/** Maximum allowed upstream response body size in bytes: 10 MB. */
 export const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 /** Maximum redirect hops to follow. */
@@ -76,22 +62,60 @@ export const ALLOWED_CONTENT_TYPES = [
  */
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? 'http://localhost:3000';
 
+// ─── Robots.txt In-Memory Cache ───────────────────────────────────
+
+const robotsCache = new Map<string, { disallowed: boolean; expiresAt: number }>();
+
+async function isDisallowedByRobots(url: URL): Promise<boolean> {
+  const host = url.hostname.toLowerCase();
+  const cached = robotsCache.get(host);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.disallowed;
+  }
+
+  try {
+    const robotsUrl = `${url.protocol}//${url.host}/robots.txt`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(robotsUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'SmallWebReader/1.0 (+https://github.com/PECathon-2026/Team-PF7UDRPK)',
+      },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      // 404 / 403 or non-standard means no crawler restrictions
+      robotsCache.set(host, { disallowed: false, expiresAt: Date.now() + 60 * 60 * 1000 });
+      return false;
+    }
+
+    const text = await res.text();
+    // Check if Disallow: / applies globally or to SmallWebReader
+    const isDisallowed = /User-agent:\s*(\*|SmallWebReader)[\s\S]*?Disallow:\s*\/\s*$/im.test(text);
+    robotsCache.set(host, { disallowed: isDisallowed, expiresAt: Date.now() + 60 * 60 * 1000 });
+    return isDisallowed;
+  } catch {
+    // If robots.txt times out or cannot be fetched, fail open (standard RSS reader practice)
+    return false;
+  }
+}
+
 // ─── CORS header builder ──────────────────────────────────────────
 
 /**
  * Build CORS headers that permit only the configured ALLOWED_ORIGIN.
- * Wildcard '*' is never used.
  */
 export function buildCorsHeaders(requestOrigin: string | null): Record<string, string> {
-  // Echo back the specific origin only when it matches our allow-list.
-  // This prevents cross-origin caching side-channels.
   const allowedOrigin =
     requestOrigin === ALLOWED_ORIGIN ? requestOrigin : ALLOWED_ORIGIN;
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, If-None-Match, If-Modified-Since',
+    'Access-Control-Expose-Headers': 'ETag, Last-Modified',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -156,12 +180,39 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return jsonError(httpStatus, dnsResult.message, origin);
   }
 
+  // ── Step 3.5: Robots.txt Check ─────────────────────────────────
+  const blockedByRobots = await isDisallowedByRobots(currentUrl);
+  if (blockedByRobots) {
+    return jsonError(
+      403,
+      'Upstream domain explicitly disallows crawler access via robots.txt (Disallow: /).',
+      origin,
+    );
+  }
+
   // ── Step 4: Fetch with timeout + manual redirect handling ────────
   const controller = new AbortController();
   const timeoutHandle = setTimeout(
     () => controller.abort(),
     FETCH_TIMEOUT_MS,
   );
+
+  // Extract conditional headers from client
+  const ifNoneMatch = req.headers.get('if-none-match');
+  const ifModifiedSince = req.headers.get('if-modified-since');
+
+  const upstreamHeaders: Record<string, string> = {
+    'User-Agent':
+      'SmallWebReader/1.0 (+https://github.com/PECathon-2026/Team-PF7UDRPK)',
+    Accept: ALLOWED_CONTENT_TYPES.join(', '),
+  };
+
+  if (ifNoneMatch) {
+    upstreamHeaders['If-None-Match'] = ifNoneMatch;
+  }
+  if (ifModifiedSince) {
+    upstreamHeaders['If-Modified-Since'] = ifModifiedSince;
+  }
 
   try {
     let upstreamResponse: Response | null = null;
@@ -174,12 +225,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           method: 'GET',
           redirect: 'manual',           // never auto-follow
           signal: controller.signal,
-          headers: {
-            // Safe, minimal headers only — no forwarding of client headers
-            'User-Agent':
-              'SmallWebReader/1.0 (+https://github.com/PECathon-2026/Team-PF7UDRPK)',
-            Accept: ALLOWED_CONTENT_TYPES.join(', '),
-          },
+          headers: upstreamHeaders,
         });
       } catch (err) {
         if (controller.signal.aborted) {
@@ -227,6 +273,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return jsonError(400, 'No response received from upstream.', origin);
     }
 
+    // ── Step 4.5: Handle HTTP 304 Not Modified ───────────────────────
+    if (upstreamResponse.status === 304) {
+      const responseHeaders: Record<string, string> = {
+        ...buildCorsHeaders(origin),
+        'Cache-Control': 'no-store',
+      };
+      const etag = upstreamResponse.headers.get('etag');
+      if (etag) responseHeaders['ETag'] = etag;
+      const lastModified = upstreamResponse.headers.get('last-modified');
+      if (lastModified) responseHeaders['Last-Modified'] = lastModified;
+
+      return new NextResponse(null, {
+        status: 304,
+        headers: responseHeaders,
+      });
+    }
+
     // ── Step 5: Content-Type allow-list ─────────────────────────────
     const upstreamContentType = upstreamResponse.headers.get('content-type');
     if (!isContentTypeAllowed(upstreamContentType)) {
@@ -237,7 +300,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // ── Step 6: Bounded body read (5 MB cap) ─────────────────────────
+    // ── Step 6: Bounded body read (10 MB cap) ─────────────────────────
     if (!upstreamResponse.body) {
       return jsonError(400, 'Upstream returned an empty response body.', origin);
     }
@@ -271,20 +334,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       offset += chunk.byteLength;
     }
 
-    // ── Step 7: Return raw body — no parsing, no storage ──────────────
+    // ── Step 7: Return raw body with ETag and Last-Modified forwarded ─
+    const responseHeaders: Record<string, string> = {
+      ...buildCorsHeaders(origin),
+      'Content-Type': upstreamContentType ?? 'application/octet-stream',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    };
+    const etag = upstreamResponse.headers.get('etag');
+    if (etag) responseHeaders['ETag'] = etag;
+    const lastModified = upstreamResponse.headers.get('last-modified');
+    if (lastModified) responseHeaders['Last-Modified'] = lastModified;
+
     return new NextResponse(body, {
       status: upstreamResponse.status,
-      headers: {
-        ...buildCorsHeaders(origin),
-        // Only forward Content-Type; strip all other upstream headers
-        'Content-Type': upstreamContentType ?? 'application/octet-stream',
-        // Prevent downstream caching of proxied content
-        'Cache-Control': 'no-store',
-        'X-Content-Type-Options': 'nosniff',
-      },
+      headers: responseHeaders,
     });
   } finally {
     clearTimeout(timeoutHandle);
   }
 }
-

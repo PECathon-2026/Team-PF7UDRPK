@@ -9,6 +9,8 @@ export interface LocalFeed {
   status: 'active' | 'error' | 'syncing';
   errorMessage?: string;
   topics?: string[]; // top 3-5 TF-IDF extracted keywords
+  etag?: string; // HTTP ETag from upstream for conditional 304 fetching
+  lastModified?: string; // HTTP Last-Modified header for conditional 304 fetching
 }
 
 export interface LocalPost {
@@ -47,4 +49,3 @@ export class SmallWebReaderDB extends Dexie {
 }
 
 export const localDB = new SmallWebReaderDB();
-
